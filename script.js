@@ -9,13 +9,13 @@ const SUPABASE_ANON_KEY = "sb_publishable_pd2KxCYegn_GRt5VCvjbnw_fBSIIu8r";
 
 const TABLE_NAME = "base_productos";
 
-// Columnas reales (según tu tabla)
 const COL = {
-  title: "Titulo",
-  image: "Imagen",
-  price: "Precio",
-  url: "Titulo_URL",
+  title: "titulo",
+  image: "imagen",
+  price: "precio",
+  url: "titulo_url",
 };
+
 
 // ==========================
 // 2) INIT SUPABASE
