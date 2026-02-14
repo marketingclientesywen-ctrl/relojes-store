@@ -213,4 +213,34 @@ button:disabled{opacity:.6; cursor:not-allowed}
   align-items:center;
   gap:8px;
   font-weight:800;
-  colo
+  color:rgba(233,237,243,.92);
+  padding:8px 10px;
+  border-radius:12px;
+  border:1px solid var(--line2);
+  background: rgba(255,255,255,.05);
+}
+.card__link:hover{background: rgba(255,255,255,.08)}
+
+.footer{
+  margin:26px 0 8px;
+  border-top:1px solid var(--line2);
+}
+.footer__inner{
+  padding:16px 4px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  color:var(--muted);
+}
+.footer__brand{color:var(--text); font-weight:800}
+
+@media (max-width: 980px){
+  .hero__inner{grid-template-columns: 1fr; }
+  .grid{grid-template-columns: repeat(2, minmax(0, 1fr));}
+  .nav{display:none;}
+}
+@media (max-width: 520px){
+  .toolbox__row{flex-direction:column; align-items:stretch}
+  select{max-width:none}
+  .grid{grid-template-columns: 1fr;}
+}
