@@ -20,7 +20,7 @@ const COL = {
 // ==========================
 // 2) INIT SUPABASE
 // ==========================
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ==========================
 // 3) UI
@@ -103,7 +103,7 @@ async function fetchProducts({ reset = false } = {}) {
   const from = page * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
 
-  let q = supabase
+ let q = supabaseClient
     .from(TABLE_NAME)
     .select("*")
     .range(from, to);
