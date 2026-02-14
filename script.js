@@ -137,7 +137,6 @@ async function fetchProducts({ reset = false } = {}) {
   if (loadMoreBtn) loadMoreBtn.disabled = false;
   loading = false;
 }
-
 // ==========================
 // Events
 // ==========================
@@ -154,4 +153,15 @@ if (searchEl) {
 }
 
 if (sortEl) {
-  sortEl.addEventListener("change", () =
+  sortEl.addEventListener("change", () => {
+    lastSort = sortEl.value;
+    fetchProducts({ reset: true });
+  });
+}
+
+if (loadMoreBtn) {
+  loadMoreBtn.addEventListener("click", () => fetchProducts());
+}
+
+// Start
+fetchProducts({ reset: true });
