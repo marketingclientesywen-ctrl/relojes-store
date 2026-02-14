@@ -56,7 +56,7 @@ const mobileBrandStatus = document.getElementById("mobileBrandStatus"); // opcio
 let currentBrandId = null; // null = todas
 
 let page = 0;
-const PAGE_SIZE = 24;
+const PAGE_SIZE = 10;
 let loading = false;
 
 let lastQuery = "";
