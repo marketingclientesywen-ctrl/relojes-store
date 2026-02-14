@@ -80,7 +80,9 @@ function productCard(p) {
           ${priceText ? `<span class="text-lg font-light text-slate-400 whitespace-nowrap">${priceText}</span>` : ""}
         </div>
 
-        <p class="text-slate-500 uppercase tracking-[0.2em] text-[10px]">Sapi Watches / Catálogo</p>
+<p class="text-slate-500 uppercase tracking-[0.2em] text-[10px]">
+  ${escapeHtml(p?.brands?.name ?? "Sin marca")}
+</p>
 
         ${
           url
