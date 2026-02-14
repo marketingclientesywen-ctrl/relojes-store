@@ -47,17 +47,38 @@
   <!-- TOP BAR -->
   <header class="fixed top-0 left-0 right-0 z-50 bg-background-dark/80 backdrop-blur-md border-b border-white/5">
     <div class="custom-container h-24 flex items-center justify-between gap-6">
+
+      <!-- Brand -->
       <div class="flex items-center gap-2">
         <span class="text-xl font-bold tracking-tighter uppercase">
           SW <span class="text-primary font-light">|</span> Sapi Watches
         </span>
       </div>
 
-      <nav class="hidden md:flex items-center space-x-10 text-[11px] uppercase tracking-[0.3em] font-medium">
-        <a class="hover:text-primary transition-colors" href="#coleccion">Colección</a>
-        <a class="hover:text-primary transition-colors" href="#about">Acerca de</a>
-        <a class="hover:text-primary transition-colors" href="#footer">Contacto</a>
-      </nav>
+      <!-- Brands dropdown (desktop) -->
+      <div class="hidden md:block relative">
+        <button id="brandsBtn"
+          class="flex items-center gap-3 text-[11px] uppercase tracking-[0.3em] font-medium text-slate-200/80 hover:text-primary transition-colors">
+          Marcas
+          <span class="material-symbols-outlined text-base opacity-70">expand_more</span>
+        </button>
+
+        <div id="brandsMenu"
+          class="hidden absolute right-0 mt-4 w-[560px] max-w-[90vw] bg-background-dark/95 backdrop-blur-xl border border-white/10 shadow-2xl p-5">
+          <div class="flex items-center justify-between mb-4">
+            <div class="text-[10px] uppercase tracking-[0.3em] font-bold text-slate-500">Selecciona una marca</div>
+            <button id="brandsAll"
+              class="text-[10px] uppercase tracking-[0.25em] font-bold text-primary hover:opacity-90"
+              type="button">
+              Todas
+            </button>
+          </div>
+
+          <div id="brandsGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div class="text-slate-500 text-xs">Cargando marcas…</div>
+          </div>
+        </div>
+      </div>
 
       <!-- Toolbar (conecta con JS) -->
       <div class="hidden lg:flex items-center gap-3">
@@ -82,6 +103,7 @@
         </button>
       </div>
 
+      <!-- Mobile button (si luego quieres abrir menú marcas en mobile) -->
       <button class="md:hidden">
         <span class="material-symbols-outlined">menu</span>
       </button>
@@ -89,7 +111,7 @@
   </header>
 
   <!-- HERO -->
-<section class="relative min-h-[105vh] pt-28 flex items-center overflow-hidden" id="about">
+  <section class="relative min-h-[105vh] pt-28 flex items-center overflow-hidden" id="about">
     <div class="absolute inset-0 z-0">
       <img
         alt="Premium Minimalist Watch Hero"
@@ -203,6 +225,6 @@
 
   <!-- Supabase + App -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="script.js?v=10"></script>
+  <script src="script.js?v=11"></script>
 </body>
 </html>
