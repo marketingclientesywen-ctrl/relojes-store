@@ -231,8 +231,7 @@ function productCard(p) {
       <div class="bg-neutral-dark aspect-[4/5] overflow-hidden mb-8 relative border border-white/5 shadow-2xl">
         ${
           img
-            ? `<img src="${img}" alt="${title}" class="w-full h-full object-cover transition-transform duration-1000 md:grayscale md:group-hover:grayscale-0"
- loading="lazy"
+            ? `<img src="${img}" alt="${title}" class="w-full h-full object-cover transition-transform duration-1000" loading="lazy"
                  onerror="this.style.display='none'; this.parentElement.innerHTML='<div class=&quot;w-full h-full grid place-items-center text-slate-500 text-sm&quot;>Imagen no disponible</div>';" />`
             : `<div class="w-full h-full grid place-items-center text-slate-500 text-sm">Sin imagen</div>`
         }
