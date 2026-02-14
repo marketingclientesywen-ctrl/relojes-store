@@ -56,8 +56,10 @@ const mobileBrandStatus = document.getElementById("mobileBrandStatus"); // opcio
 let currentBrandId = null; // null = todas
 
 let page = 0;
-const PAGE_SIZE = 10;
+const FIRST_LOAD = 10;
+const PAGE_SIZE = 24;
 let loading = false;
+
 
 let lastQuery = "";
 let lastSort = "name_asc";
@@ -269,9 +271,10 @@ async function fetchProducts({ reset = false } = {}) {
   setStatus("Cargando…");
   if (loadMoreBtn) loadMoreBtn.disabled = true;
   if (loadMoreMobileBtn) loadMoreMobileBtn.disabled = true;
+const size = (page === 0) ? FIRST_LOAD : PAGE_SIZE;
+const from = page === 0 ? 0 : (FIRST_LOAD + (page - 1) * PAGE_SIZE);
+const to = from + size - 1;
 
-  const from = page * PAGE_SIZE;
-  const to = from + PAGE_SIZE - 1;
 
   let q = sb
     .from(TABLE_NAME)
