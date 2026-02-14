@@ -121,7 +121,10 @@ async function fetchProducts({ reset = false } = {}) {
   const from = page * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
 
-  let q = sb.from(TABLE_NAME).select("*").range(from, to);
+let q = sb
+  .from(TABLE_NAME)
+  .select(`*, brands(name)`)
+  .range(from, to);
 
   const term = (lastQuery || "").trim();
   if (term) q = q.ilike(COL.title, `%${term}%`);
