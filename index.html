@@ -1,18 +1,33 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Tienda de Relojes</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
-  <header>
+  <header class="header">
     <h1>Relojes</h1>
+
+    <div class="toolbar">
+      <input id="search" type="search" placeholder="Buscar por título…" />
+      <select id="sort">
+        <option value="name_asc">A-Z</option>
+      </select>
+      <button id="loadMore" type="button">Cargar más</button>
+    </div>
+
+    <div id="status" class="status"></div>
   </header>
 
-  <div id="productos" class="grid"></div>
+  <main class="wrap">
+    <div id="grid" class="grid"></div>
+  </main>
 
+  <!-- Supabase (necesario) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="script.js"></script>
 </body>
 </html>
