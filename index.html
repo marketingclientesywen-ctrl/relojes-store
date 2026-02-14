@@ -3,30 +3,96 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Tienda de Relojes</title>
+  <title>Sapi Watches</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
 
-  <header class="header">
-    <h1>Relojes</h1>
+  <header class="topbar">
+    <div class="topbar__inner">
+      <a class="brand" href="#">
+        <span class="brand__mark">SW</span>
+        <span class="brand__name">Sapi Watches</span>
+      </a>
 
-    <div class="toolbar">
-      <input id="search" type="search" placeholder="Buscar por título…" />
-      <select id="sort">
-        <option value="name_asc">A-Z</option>
-      </select>
-      <button id="loadMore" type="button">Cargar más</button>
+      <nav class="nav">
+        <a href="#coleccion">Colección</a>
+        <a href="#about">About</a>
+        <a href="#footer">Contacto</a>
+      </nav>
     </div>
-
-    <div id="status" class="status"></div>
   </header>
 
-  <main class="wrap">
-    <div id="grid" class="grid"></div>
+  <main class="page">
+    <section class="hero" id="about">
+      <div class="hero__inner">
+        <div class="hero__left">
+          <h1 class="hero__title">Relojes con actitud.</h1>
+          <p class="hero__lead">
+            Curados por <strong>Sapi</strong>. Nada de humo: piezas bonitas, directas y con link al producto.
+          </p>
+
+          <div class="hero__meta">
+            <div class="meta">
+              <div class="meta__k">Qué</div>
+              <div class="meta__v">Selección / catálogo</div>
+            </div>
+            <div class="meta">
+              <div class="meta__k">Orden</div>
+              <div class="meta__v">A–Z + búsqueda</div>
+            </div>
+            <div class="meta">
+              <div class="meta__k">Fuente</div>
+              <div class="meta__v">Supabase</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="hero__right">
+          <div class="toolbox">
+            <div class="toolbox__row">
+              <input id="search" type="search" placeholder="Buscar por título…" />
+              <select id="sort">
+                <option value="name_asc">A–Z</option>
+              </select>
+              <button id="loadMore" type="button">Cargar más</button>
+            </div>
+            <div id="status" class="status"></div>
+          </div>
+
+          <div class="hero__card">
+            <div class="hero__cardTitle">Manifiesto</div>
+            <p class="hero__cardText">
+              “El tiempo es raro. Los relojes también. Vamos a disfrutarlo.”
+            </p>
+            <div class="hero__cardHint">Haz clic en un producto para abrirlo.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="coleccion">
+      <div class="section__head">
+        <h2 class="section__title">Colección</h2>
+        <p class="section__subtitle">Resultados en tiempo real desde tu base de datos.</p>
+      </div>
+
+      <div id="grid" class="grid"></div>
+    </section>
+
+    <footer class="footer" id="footer">
+      <div class="footer__inner">
+        <div class="footer__brand">Sapi Watches</div>
+        <div class="footer__copy">© <span id="year"></span> — hecho con Supabase + GitHub Pages.</div>
+      </div>
+    </footer>
   </main>
 
-  <!-- Supabase (necesario) -->
+  <script>
+    document.getElementById("year").textContent = new Date().getFullYear();
+  </script>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="script.js?v=3"></script>
 </body>
 </html>
