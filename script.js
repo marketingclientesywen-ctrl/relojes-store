@@ -1,5 +1,5 @@
 // ==========================
-// Sapi Watches - Supabase Catalog + Brands Menu
+// Sapi Watches - Supabase Catalog + Brands Menu (Desktop + Mobile)
 // ==========================
 
 // CONFIG
@@ -38,11 +38,20 @@ const sortEl = document.getElementById("sort");
 const loadMoreBtn = document.getElementById("loadMore");
 const loadMoreMobileBtn = document.getElementById("loadMoreMobile");
 
-// Brands UI (del HTML nuevo)
+// Desktop brands dropdown
 const brandsBtn = document.getElementById("brandsBtn");
 const brandsMenu = document.getElementById("brandsMenu");
 const brandsGrid = document.getElementById("brandsGrid");
 const brandsAllBtn = document.getElementById("brandsAll");
+
+// Mobile drawer
+const mobileMenuBtn = document.getElementById("mobileMenuBtn");
+const mobileDrawer = document.getElementById("mobileDrawer");
+const mobileDrawerBackdrop = document.getElementById("mobileDrawerBackdrop");
+const mobileDrawerClose = document.getElementById("mobileDrawerClose");
+const mobileBrandsGrid = document.getElementById("mobileBrandsGrid");
+const mobileBrandsAllBtn = document.getElementById("mobileBrandsAll");
+const mobileBrandStatus = document.getElementById("mobileBrandStatus"); // opcional (si existe)
 
 let currentBrandId = null; // null = todas
 
@@ -53,6 +62,9 @@ let loading = false;
 let lastQuery = "";
 let lastSort = "name_asc";
 
+// --------------------------
+// Helpers
+// --------------------------
 function setStatus(msg = "") {
   if (statusEl) statusEl.textContent = msg;
 }
@@ -74,23 +86,39 @@ function normalizePrice(p) {
 }
 
 // --------------------------
-// Brands dropdown
+// Desktop dropdown
 // --------------------------
 function openBrandsMenu() {
   if (!brandsMenu) return;
   brandsMenu.classList.remove("hidden");
 }
-
 function closeBrandsMenu() {
   if (!brandsMenu) return;
   brandsMenu.classList.add("hidden");
 }
-
 function toggleBrandsMenu() {
   if (!brandsMenu) return;
   brandsMenu.classList.toggle("hidden");
 }
 
+// --------------------------
+// Mobile drawer
+// --------------------------
+function openMobileDrawer() {
+  if (!mobileDrawer) return;
+  mobileDrawer.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+}
+
+function closeMobileDrawer() {
+  if (!mobileDrawer) return;
+  mobileDrawer.classList.add("hidden");
+  document.body.style.overflow = "";
+}
+
+// --------------------------
+// Brands rendering
+// --------------------------
 function brandFallback(name) {
   const parts = String(name || "B").trim().split(/\s+/);
   const a = (parts[0]?.[0] || "B").toUpperCase();
@@ -102,7 +130,6 @@ function brandCard(b) {
   const name = escapeHtml(b?.[BRAND.name] ?? "Marca");
   const logo = b?.[BRAND.logo] ? escapeHtml(b[BRAND.logo]) : "";
   const id = b?.[BRAND.id];
-
   const fb = brandFallback(name);
 
   return `
@@ -129,10 +156,21 @@ function brandCard(b) {
   `;
 }
 
-async function loadBrands() {
-  if (!brandsGrid) return;
+function bindBrandClicks(container, { onPick }) {
+  if (!container) return;
+  container.querySelectorAll("[data-brand-id]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.getAttribute("data-brand-id");
+      const parsed = id ? Number(id) : null;
+      onPick(parsed);
+    });
+  });
+}
 
-  brandsGrid.innerHTML = `<div class="text-slate-500 text-xs">Cargando marcas…</div>`;
+async function loadBrands() {
+  // Desktop + Mobile placeholders
+  if (brandsGrid) brandsGrid.innerHTML = `<div class="text-slate-500 text-xs">Cargando marcas…</div>`;
+  if (mobileBrandsGrid) mobileBrandsGrid.innerHTML = `<div class="text-slate-500 text-xs">Cargando marcas…</div>`;
 
   const { data, error } = await sb
     .from(BRAND.table)
@@ -141,25 +179,41 @@ async function loadBrands() {
 
   if (error) {
     console.error("Brands error:", error);
-    brandsGrid.innerHTML = `<div class="text-slate-500 text-xs">Error cargando marcas.</div>`;
+    if (brandsGrid) brandsGrid.innerHTML = `<div class="text-slate-500 text-xs">Error cargando marcas.</div>`;
+    if (mobileBrandsGrid) mobileBrandsGrid.innerHTML = `<div class="text-slate-500 text-xs">Error cargando marcas.</div>`;
     return;
   }
 
   if (!data || data.length === 0) {
-    brandsGrid.innerHTML = `<div class="text-slate-500 text-xs">No hay marcas.</div>`;
+    if (brandsGrid) brandsGrid.innerHTML = `<div class="text-slate-500 text-xs">No hay marcas.</div>`;
+    if (mobileBrandsGrid) mobileBrandsGrid.innerHTML = `<div class="text-slate-500 text-xs">No hay marcas.</div>`;
     return;
   }
 
-  brandsGrid.innerHTML = data.map(brandCard).join("");
+  const html = data.map(brandCard).join("");
 
-  brandsGrid.querySelectorAll("[data-brand-id]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const id = btn.getAttribute("data-brand-id");
-      currentBrandId = id ? Number(id) : null;
+  if (brandsGrid) brandsGrid.innerHTML = html;
+  if (mobileBrandsGrid) mobileBrandsGrid.innerHTML = html;
+
+  // Desktop click
+  bindBrandClicks(brandsGrid, {
+    onPick: (id) => {
+      currentBrandId = id;
       closeBrandsMenu();
       fetchProducts({ reset: true });
-    });
+    },
   });
+
+  // Mobile click
+  bindBrandClicks(mobileBrandsGrid, {
+    onPick: (id) => {
+      currentBrandId = id;
+      closeMobileDrawer();
+      fetchProducts({ reset: true });
+    },
+  });
+
+  if (mobileBrandStatus) mobileBrandStatus.textContent = `${data.length} marcas`;
 }
 
 // --------------------------
@@ -304,7 +358,7 @@ if (sortEl) {
 if (loadMoreBtn) loadMoreBtn.addEventListener("click", () => fetchProducts());
 if (loadMoreMobileBtn) loadMoreMobileBtn.addEventListener("click", () => fetchProducts());
 
-// Brands menu events
+// Desktop brands dropdown events
 if (brandsBtn) {
   brandsBtn.addEventListener("click", (e) => {
     e.preventDefault();
@@ -320,16 +374,32 @@ if (brandsAllBtn) {
   });
 }
 
-// close dropdown on outside click
+// close desktop dropdown on outside click
 document.addEventListener("click", (e) => {
   if (!brandsMenu || !brandsBtn) return;
   const inside = brandsMenu.contains(e.target) || brandsBtn.contains(e.target);
   if (!inside) closeBrandsMenu();
 });
 
-// close dropdown on ESC
+// Mobile drawer events
+if (mobileMenuBtn) mobileMenuBtn.addEventListener("click", openMobileDrawer);
+if (mobileDrawerBackdrop) mobileDrawerBackdrop.addEventListener("click", closeMobileDrawer);
+if (mobileDrawerClose) mobileDrawerClose.addEventListener("click", closeMobileDrawer);
+
+if (mobileBrandsAllBtn) {
+  mobileBrandsAllBtn.addEventListener("click", () => {
+    currentBrandId = null;
+    closeMobileDrawer();
+    fetchProducts({ reset: true });
+  });
+}
+
+// ESC closes both desktop dropdown + mobile drawer
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") closeBrandsMenu();
+  if (e.key === "Escape") {
+    closeBrandsMenu();
+    closeMobileDrawer();
+  }
 });
 
 // --------------------------
