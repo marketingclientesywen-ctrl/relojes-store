@@ -2,7 +2,7 @@
 // 1) CONFIG
 // ==========================
 // Debe ser algo como: https://gwprzkuuxhnixovmniaj.supabase.co
-const SUPABASE_URL = "https://gwprzkuuxhnixovmniaj.supabase.co";
+const SUPABASE_URL = "gwprzkuuxhnixovmniaj";
 
 // Pega aquí tu ANON KEY real (Project Settings -> API -> anon public)
 const SUPABASE_ANON_KEY = "sb_publishable_pd2KxCYegn_GRt5VCvjbnw_fBSIIu8r";
