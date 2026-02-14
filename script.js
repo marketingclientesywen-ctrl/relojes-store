@@ -1,5 +1,5 @@
 // ==========================
-// Sapi Watches - Supabase Catalog
+// Sapi Watches - Supabase Catalog + Brands Menu
 // ==========================
 
 // CONFIG
@@ -13,6 +13,14 @@ const COL = {
   image: "Imagen",
   price: "Precio",
   url: "Titulo_URL",
+};
+
+// Brands table columns (ajusta si en tu BD se llaman distinto)
+const BRAND = {
+  table: "brands",
+  id: "id",
+  name: "name",
+  logo: "logo_url",
 };
 
 // INIT
@@ -29,6 +37,14 @@ const sortEl = document.getElementById("sort");
 
 const loadMoreBtn = document.getElementById("loadMore");
 const loadMoreMobileBtn = document.getElementById("loadMoreMobile");
+
+// Brands UI (del HTML nuevo)
+const brandsBtn = document.getElementById("brandsBtn");
+const brandsMenu = document.getElementById("brandsMenu");
+const brandsGrid = document.getElementById("brandsGrid");
+const brandsAllBtn = document.getElementById("brandsAll");
+
+let currentBrandId = null; // null = todas
 
 let page = 0;
 const PAGE_SIZE = 24;
@@ -53,23 +69,116 @@ function escapeHtml(str) {
 function normalizePrice(p) {
   const raw = String(p ?? "").trim();
   if (!raw) return "";
-  // Tu scraping trae "Prices on Login" -> lo convertimos a algo más bonito
   if (/prices on login/i.test(raw)) return "Precio bajo consulta";
   return raw;
 }
 
+// --------------------------
+// Brands dropdown
+// --------------------------
+function openBrandsMenu() {
+  if (!brandsMenu) return;
+  brandsMenu.classList.remove("hidden");
+}
+
+function closeBrandsMenu() {
+  if (!brandsMenu) return;
+  brandsMenu.classList.add("hidden");
+}
+
+function toggleBrandsMenu() {
+  if (!brandsMenu) return;
+  brandsMenu.classList.toggle("hidden");
+}
+
+function brandFallback(name) {
+  const parts = String(name || "B").trim().split(/\s+/);
+  const a = (parts[0]?.[0] || "B").toUpperCase();
+  const b = (parts[1]?.[0] || "").toUpperCase();
+  return (a + b).slice(0, 2);
+}
+
+function brandCard(b) {
+  const name = escapeHtml(b?.[BRAND.name] ?? "Marca");
+  const logo = b?.[BRAND.logo] ? escapeHtml(b[BRAND.logo]) : "";
+  const id = b?.[BRAND.id];
+
+  const fb = brandFallback(name);
+
+  return `
+    <button
+      class="group text-left flex items-center gap-3 p-3 border border-white/10 hover:border-primary/60 hover:bg-white/5 transition"
+      data-brand-id="${id}"
+      type="button"
+      title="${name}"
+    >
+      <div class="w-10 h-10 bg-white/5 border border-white/10 grid place-items-center overflow-hidden">
+        ${
+          logo
+            ? `<img src="${logo}" alt="${name}" class="w-full h-full object-contain p-2 opacity-90 group-hover:opacity-100"
+                 loading="lazy"
+                 onerror="this.remove(); this.parentElement.innerHTML='<span class=&quot;text-xs font-bold text-slate-300&quot;'>${fb}</span>';">`
+            : `<span class="text-xs font-bold text-slate-300">${fb}</span>`
+        }
+      </div>
+      <div class="min-w-0">
+        <div class="text-sm font-semibold tracking-tight group-hover:text-primary transition-colors truncate">${name}</div>
+        <div class="text-[10px] uppercase tracking-[0.25em] text-slate-500">Ver relojes</div>
+      </div>
+    </button>
+  `;
+}
+
+async function loadBrands() {
+  if (!brandsGrid) return;
+
+  brandsGrid.innerHTML = `<div class="text-slate-500 text-xs">Cargando marcas…</div>`;
+
+  const { data, error } = await sb
+    .from(BRAND.table)
+    .select(`${BRAND.id}, ${BRAND.name}, ${BRAND.logo}`)
+    .order(BRAND.name, { ascending: true });
+
+  if (error) {
+    console.error("Brands error:", error);
+    brandsGrid.innerHTML = `<div class="text-slate-500 text-xs">Error cargando marcas.</div>`;
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    brandsGrid.innerHTML = `<div class="text-slate-500 text-xs">No hay marcas.</div>`;
+    return;
+  }
+
+  brandsGrid.innerHTML = data.map(brandCard).join("");
+
+  brandsGrid.querySelectorAll("[data-brand-id]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.getAttribute("data-brand-id");
+      currentBrandId = id ? Number(id) : null;
+      closeBrandsMenu();
+      fetchProducts({ reset: true });
+    });
+  });
+}
+
+// --------------------------
+// Product card
+// --------------------------
 function productCard(p) {
-  const title = escapeHtml(p[COL.title] ?? "Sin título");
-  const img = p[COL.image] ? escapeHtml(p[COL.image]) : "";
-  const url = p[COL.url] ? escapeHtml(p[COL.url]) : "";
-  const priceText = escapeHtml(normalizePrice(p[COL.price]));
+  const title = escapeHtml(p?.[COL.title] ?? "Sin título");
+  const img = p?.[COL.image] ? escapeHtml(p[COL.image]) : "";
+  const url = p?.[COL.url] ? escapeHtml(p[COL.url]) : "";
+  const priceText = escapeHtml(normalizePrice(p?.[COL.price]));
+  const brandName = escapeHtml(p?.brands?.name ?? "Sin marca");
 
   return `
     <div class="product-card group">
       <div class="bg-neutral-dark aspect-[4/5] overflow-hidden mb-8 relative border border-white/5 shadow-2xl">
         ${
           img
-            ? `<img src="${img}" alt="${title}" class="w-full h-full object-cover transition-transform duration-1000 grayscale group-hover:grayscale-0" loading="lazy" />`
+            ? `<img src="${img}" alt="${title}" class="w-full h-full object-cover transition-transform duration-1000 grayscale group-hover:grayscale-0" loading="lazy"
+                 onerror="this.style.display='none'; this.parentElement.innerHTML='<div class=&quot;w-full h-full grid place-items-center text-slate-500 text-sm&quot;>Imagen no disponible</div>';" />`
             : `<div class="w-full h-full grid place-items-center text-slate-500 text-sm">Sin imagen</div>`
         }
       </div>
@@ -80,9 +189,7 @@ function productCard(p) {
           ${priceText ? `<span class="text-lg font-light text-slate-400 whitespace-nowrap">${priceText}</span>` : ""}
         </div>
 
-<p class="text-slate-500 uppercase tracking-[0.2em] text-[10px]">
-  ${escapeHtml(p?.brands?.name ?? "Sin marca")}
-</p>
+        <p class="text-slate-500 uppercase tracking-[0.2em] text-[10px]">${brandName}</p>
 
         ${
           url
@@ -105,6 +212,9 @@ function applySort(q, sortValue) {
   }
 }
 
+// --------------------------
+// Fetch products
+// --------------------------
 async function fetchProducts({ reset = false } = {}) {
   if (loading) return;
   loading = true;
@@ -123,11 +233,18 @@ async function fetchProducts({ reset = false } = {}) {
   const from = page * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
 
-let q = sb
-  .from(TABLE_NAME)
-  .select(`*, brands(name)`)
-  .range(from, to);
+  // Join con brands (requiere FK base_productos.brand_id -> brands.id)
+  let q = sb
+    .from(TABLE_NAME)
+    .select(`*, brands:brand_id(name)`)
+    .range(from, to);
 
+  // Filtro por marca
+  if (currentBrandId) {
+    q = q.eq("brand_id", currentBrandId);
+  }
+
+  // Búsqueda por título
   const term = (lastQuery || "").trim();
   if (term) q = q.ilike(COL.title, `%${term}%`);
 
@@ -161,7 +278,9 @@ let q = sb
   loading = false;
 }
 
+// --------------------------
 // Events
+// --------------------------
 let t = null;
 
 function onSearch(value) {
@@ -185,5 +304,36 @@ if (sortEl) {
 if (loadMoreBtn) loadMoreBtn.addEventListener("click", () => fetchProducts());
 if (loadMoreMobileBtn) loadMoreMobileBtn.addEventListener("click", () => fetchProducts());
 
+// Brands menu events
+if (brandsBtn) {
+  brandsBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    toggleBrandsMenu();
+  });
+}
+
+if (brandsAllBtn) {
+  brandsAllBtn.addEventListener("click", () => {
+    currentBrandId = null;
+    closeBrandsMenu();
+    fetchProducts({ reset: true });
+  });
+}
+
+// close dropdown on outside click
+document.addEventListener("click", (e) => {
+  if (!brandsMenu || !brandsBtn) return;
+  const inside = brandsMenu.contains(e.target) || brandsBtn.contains(e.target);
+  if (!inside) closeBrandsMenu();
+});
+
+// close dropdown on ESC
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeBrandsMenu();
+});
+
+// --------------------------
 // Start
+// --------------------------
+loadBrands();
 fetchProducts({ reset: true });
