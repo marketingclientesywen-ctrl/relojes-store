@@ -4,34 +4,7 @@
   <meta charset="utf-8"/>
   <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
   <title>Sapi Watches</title>
-<!-- Mobile Brands Drawer -->
-<div id="mobileDrawer" class="hidden fixed inset-0 z-[60]">
-  <!-- backdrop -->
-  <div id="mobileDrawerBackdrop" class="absolute inset-0 bg-black/60"></div>
 
-  <!-- panel -->
-  <div class="absolute right-0 top-0 h-full w-[88vw] max-w-[420px] bg-background-dark border-l border-white/10 shadow-2xl p-5 overflow-y-auto">
-    <div class="flex items-center justify-between mb-4">
-      <div class="text-[10px] uppercase tracking-[0.3em] font-bold text-slate-500">Marcas</div>
-      <button id="mobileDrawerClose" class="text-slate-200/80 hover:text-primary" type="button" aria-label="Cerrar">
-        <span class="material-symbols-outlined">close</span>
-      </button>
-    </div>
-
-    <div class="flex items-center justify-between mb-4">
-      <button id="mobileBrandsAll"
-        class="text-[10px] uppercase tracking-[0.25em] font-bold text-primary hover:opacity-90"
-        type="button">
-        Todas
-      </button>
-      <div class="text-xs text-slate-500" id="mobileBrandStatus"></div>
-    </div>
-
-    <div id="mobileBrandsGrid" class="grid grid-cols-1 gap-3">
-      <div class="text-slate-500 text-xs">Cargando marcas…</div>
-    </div>
-  </div>
-</div>
 
   <!-- Tailwind CDN -->
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
@@ -71,7 +44,34 @@
 </head>
 
 <body class="bg-background-dark text-slate-100 font-display selection:bg-primary/30">
+ <!-- Mobile Brands Drawer -->
+<div id="mobileDrawer" class="hidden fixed inset-0 z-[60]">
+  <!-- backdrop -->
+  <div id="mobileDrawerBackdrop" class="absolute inset-0 bg-black/60"></div>
 
+  <!-- panel -->
+  <div class="absolute right-0 top-0 h-full w-[88vw] max-w-[420px] bg-background-dark border-l border-white/10 shadow-2xl p-5 overflow-y-auto">
+    <div class="flex items-center justify-between mb-4">
+      <div class="text-[10px] uppercase tracking-[0.3em] font-bold text-slate-500">Marcas</div>
+      <button id="mobileDrawerClose" class="text-slate-200/80 hover:text-primary" type="button" aria-label="Cerrar">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <div class="flex items-center justify-between mb-4">
+      <button id="mobileBrandsAll"
+        class="text-[10px] uppercase tracking-[0.25em] font-bold text-primary hover:opacity-90"
+        type="button">
+        Todas
+      </button>
+      <div class="text-xs text-slate-500" id="mobileBrandStatus"></div>
+    </div>
+
+    <div id="mobileBrandsGrid" class="grid grid-cols-1 gap-3">
+      <div class="text-slate-500 text-xs">Cargando marcas…</div>
+    </div>
+  </div>
+</div>
   <!-- TOP BAR -->
   <header class="fixed top-0 left-0 right-0 z-50 bg-background-dark/80 backdrop-blur-md border-b border-white/5">
     <div class="custom-container h-24 flex items-center justify-between gap-6">
