@@ -1,11 +1,15 @@
 // ==========================
 // 1) CONFIG
 // ==========================
-const SUPABASE_URL = "gwprzkuuxhnixovmniaj";
-const SUPABASE_ANON_KEY = "sb_publishable_pd2KxCYegn_GRt5VCvjbnw_fBSIIu8r";
-const TABLE_NAME = "base_productos"; // <-- pon aquí el nombre exacto de tu tabla en Supabase
+// Debe ser algo como: https://gwprzkuuxhnixovmniaj.supabase.co
+const SUPABASE_URL = "https://gwprzkuuxhnixovmniaj.supabase.co";
 
-// Tus columnas reales (según la captura)
+// Pega aquí tu ANON KEY real (Project Settings -> API -> anon public)
+const SUPABASE_ANON_KEY = "sb_publishable_pd2KxCYegn_GRt5VCvjbnw_fBSIIu8r";
+
+const TABLE_NAME = "base_productos";
+
+// Columnas reales (según tu tabla)
 const COL = {
   title: "Titulo",
   image: "Imagen",
@@ -65,9 +69,7 @@ function productCard(p) {
 
       <div class="card__body">
         <h3 class="card__title" title="${title}">${title}</h3>
-
         ${priceText ? `<div class="card__price">${priceText}</div>` : ""}
-
         ${url ? `<a class="card__link" href="${url}" target="_blank" rel="noopener">Ver producto</a>` : ""}
       </div>
     </article>
@@ -75,7 +77,6 @@ function productCard(p) {
 }
 
 function applySort(q, sortValue) {
-  // Como no tienes created_at, ordenamos por Titulo
   switch (sortValue) {
     case "name_asc":
     default:
@@ -93,6 +94,7 @@ async function fetchProducts({ reset = false } = {}) {
   if (reset) {
     page = 0;
     if (grid) grid.innerHTML = "";
+    if (loadMoreBtn) loadMoreBtn.style.display = "inline-block";
   }
 
   setStatus("Cargando…");
@@ -107,10 +109,7 @@ async function fetchProducts({ reset = false } = {}) {
     .range(from, to);
 
   const term = (lastQuery || "").trim();
-  if (term) {
-    // Búsqueda por título
-    q = q.ilike(COL.title, `%${term}%`);
-  }
+  if (term) q = q.ilike(COL.title, `%${term}%`);
 
   q = applySort(q, lastSort);
 
@@ -118,7 +117,7 @@ async function fetchProducts({ reset = false } = {}) {
 
   if (error) {
     console.error("Supabase error:", error);
-    setStatus("Error cargando datos (mira consola). Posible RLS sin policy de SELECT.");
+    setStatus("Error cargando datos (mira consola). Revisa RLS + anon key + URL.");
     if (loadMoreBtn) loadMoreBtn.disabled = false;
     loading = false;
     return;
@@ -131,14 +130,11 @@ async function fetchProducts({ reset = false } = {}) {
     return;
   }
 
-  if (grid) grid.insertAdjacentHTML("beforeend", data.map(productCard).join(""));
-
+  grid.insertAdjacentHTML("beforeend", data.map(productCard).join(""));
   page += 1;
+
   setStatus("");
-  if (loadMoreBtn) {
-    loadMoreBtn.style.display = "inline-block";
-    loadMoreBtn.disabled = false;
-  }
+  if (loadMoreBtn) loadMoreBtn.disabled = false;
   loading = false;
 }
 
@@ -158,16 +154,4 @@ if (searchEl) {
 }
 
 if (sortEl) {
-  // En tu caso solo tenemos orden por nombre, pero lo dejo listo
-  sortEl.addEventListener("change", () => {
-    lastSort = sortEl.value;
-    fetchProducts({ reset: true });
-  });
-}
-
-if (loadMoreBtn) {
-  loadMoreBtn.addEventListener("click", () => fetchProducts());
-}
-
-// Start
-fetchProducts({ reset: true });
+  sortEl.addEventListener("change", () =
