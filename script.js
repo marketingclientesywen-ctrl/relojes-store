@@ -15,7 +15,7 @@ const COL = {
   url: "Titulo_URL",
 };
 
-// Brands table columns (ajusta si en tu BD se llaman distinto)
+// Brands table columns
 const BRAND = {
   table: "brands",
   id: "id",
@@ -51,7 +51,7 @@ const mobileDrawerBackdrop = document.getElementById("mobileDrawerBackdrop");
 const mobileDrawerClose = document.getElementById("mobileDrawerClose");
 const mobileBrandsGrid = document.getElementById("mobileBrandsGrid");
 const mobileBrandsAllBtn = document.getElementById("mobileBrandsAll");
-const mobileBrandStatus = document.getElementById("mobileBrandStatus"); // opcional (si existe)
+const mobileBrandStatus = document.getElementById("mobileBrandStatus"); // opcional
 
 let currentBrandId = null; // null = todas
 
@@ -88,10 +88,6 @@ function normalizePrice(p) {
 // --------------------------
 // Desktop dropdown
 // --------------------------
-function openBrandsMenu() {
-  if (!brandsMenu) return;
-  brandsMenu.classList.remove("hidden");
-}
 function closeBrandsMenu() {
   if (!brandsMenu) return;
   brandsMenu.classList.add("hidden");
@@ -109,7 +105,6 @@ function openMobileDrawer() {
   mobileDrawer.classList.remove("hidden");
   document.body.style.overflow = "hidden";
 }
-
 function closeMobileDrawer() {
   if (!mobileDrawer) return;
   mobileDrawer.classList.add("hidden");
@@ -156,19 +151,17 @@ function brandCard(b) {
   `;
 }
 
-function bindBrandClicks(container, { onPick }) {
+function bindBrandClicks(container, onPick) {
   if (!container) return;
   container.querySelectorAll("[data-brand-id]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const id = btn.getAttribute("data-brand-id");
-      const parsed = id ? Number(id) : null;
-      onPick(parsed);
+      onPick(id ? Number(id) : null);
     });
   });
 }
 
 async function loadBrands() {
-  // Desktop + Mobile placeholders
   if (brandsGrid) brandsGrid.innerHTML = `<div class="text-slate-500 text-xs">Cargando marcas…</div>`;
   if (mobileBrandsGrid) mobileBrandsGrid.innerHTML = `<div class="text-slate-500 text-xs">Cargando marcas…</div>`;
 
@@ -191,33 +184,26 @@ async function loadBrands() {
   }
 
   const html = data.map(brandCard).join("");
-
   if (brandsGrid) brandsGrid.innerHTML = html;
   if (mobileBrandsGrid) mobileBrandsGrid.innerHTML = html;
 
-  // Desktop click
-  bindBrandClicks(brandsGrid, {
-    onPick: (id) => {
-      currentBrandId = id;
-      closeBrandsMenu();
-      fetchProducts({ reset: true });
-    },
+  bindBrandClicks(brandsGrid, (id) => {
+    currentBrandId = id;
+    closeBrandsMenu();
+    fetchProducts({ reset: true });
   });
 
-  // Mobile click
-  bindBrandClicks(mobileBrandsGrid, {
-    onPick: (id) => {
-      currentBrandId = id;
-      closeMobileDrawer();
-      fetchProducts({ reset: true });
-    },
+  bindBrandClicks(mobileBrandsGrid, (id) => {
+    currentBrandId = id;
+    closeMobileDrawer();
+    fetchProducts({ reset: true });
   });
 
   if (mobileBrandStatus) mobileBrandStatus.textContent = `${data.length} marcas`;
 }
 
 // --------------------------
-// Product card
+// Product card (SIN FILTRO)
 // --------------------------
 function productCard(p) {
   const title = escapeHtml(p?.[COL.title] ?? "Sin título");
@@ -231,7 +217,7 @@ function productCard(p) {
       <div class="bg-neutral-dark aspect-[4/5] overflow-hidden mb-8 relative border border-white/5 shadow-2xl">
         ${
           img
-            ? `<img src="${img}" alt="${title}" class="w-full h-full object-cover transition-transform duration-1000" loading="lazy"
+            ? `<img src="${img}" alt="${title}" class="w-full h-full object-cover" loading="lazy"
                  onerror="this.style.display='none'; this.parentElement.innerHTML='<div class=&quot;w-full h-full grid place-items-center text-slate-500 text-sm&quot;>Imagen no disponible</div>';" />`
             : `<div class="w-full h-full grid place-items-center text-slate-500 text-sm">Sin imagen</div>`
         }
@@ -287,18 +273,13 @@ async function fetchProducts({ reset = false } = {}) {
   const from = page * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
 
-  // Join con brands (requiere FK base_productos.brand_id -> brands.id)
   let q = sb
     .from(TABLE_NAME)
     .select(`*, brands:brand_id(name)`)
     .range(from, to);
 
-  // Filtro por marca
-  if (currentBrandId) {
-    q = q.eq("brand_id", currentBrandId);
-  }
+  if (currentBrandId) q = q.eq("brand_id", currentBrandId);
 
-  // Búsqueda por título
   const term = (lastQuery || "").trim();
   if (term) q = q.ilike(COL.title, `%${term}%`);
 
@@ -323,7 +304,7 @@ async function fetchProducts({ reset = false } = {}) {
     return;
   }
 
-  grid.insertAdjacentHTML("beforeend", data.map(productCard).join(""));
+  if (grid) grid.insertAdjacentHTML("beforeend", data.map(productCard).join(""));
   page += 1;
 
   setStatus("");
@@ -358,7 +339,7 @@ if (sortEl) {
 if (loadMoreBtn) loadMoreBtn.addEventListener("click", () => fetchProducts());
 if (loadMoreMobileBtn) loadMoreMobileBtn.addEventListener("click", () => fetchProducts());
 
-// Desktop brands dropdown events
+// Desktop brands dropdown
 if (brandsBtn) {
   brandsBtn.addEventListener("click", (e) => {
     e.preventDefault();
@@ -374,14 +355,14 @@ if (brandsAllBtn) {
   });
 }
 
-// close desktop dropdown on outside click
+// Close desktop dropdown on outside click
 document.addEventListener("click", (e) => {
   if (!brandsMenu || !brandsBtn) return;
   const inside = brandsMenu.contains(e.target) || brandsBtn.contains(e.target);
   if (!inside) closeBrandsMenu();
 });
 
-// Mobile drawer events
+// Mobile drawer
 if (mobileMenuBtn) mobileMenuBtn.addEventListener("click", openMobileDrawer);
 if (mobileDrawerBackdrop) mobileDrawerBackdrop.addEventListener("click", closeMobileDrawer);
 if (mobileDrawerClose) mobileDrawerClose.addEventListener("click", closeMobileDrawer);
@@ -394,7 +375,7 @@ if (mobileBrandsAllBtn) {
   });
 }
 
-// ESC closes both desktop dropdown + mobile drawer
+// ESC closes dropdown + drawer
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
     closeBrandsMenu();
@@ -402,8 +383,6 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-// --------------------------
-// Start
-// --------------------------
+// START
 loadBrands();
 fetchProducts({ reset: true });
