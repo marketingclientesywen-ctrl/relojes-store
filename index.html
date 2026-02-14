@@ -1,98 +1,208 @@
 <!DOCTYPE html>
-<html lang="es">
+<html class="dark" lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
   <title>Sapi Watches</title>
-  <link rel="stylesheet" href="styles.css" />
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+
+  <!-- Fonts + Icons -->
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+
+  <!-- Tailwind config -->
+  <script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "primary": "#137fec",
+            "background-dark": "#0a0a0a",
+            "neutral-dark": "#141414",
+            "neutral-border": "#262626",
+          },
+          fontFamily: {
+            "display": ["Space Grotesk"]
+          },
+          borderRadius: {"DEFAULT": "0px", "lg": "0px", "xl": "0px", "full": "9999px"},
+        },
+      },
+    }
+  </script>
+
+  <!-- Tiny custom css -->
+  <style type="text/tailwindcss">
+    body { font-family: 'Space Grotesk', sans-serif; scroll-behavior: smooth; }
+    .custom-container { padding-left: 150px; padding-right: 150px; }
+    @media (max-width: 1280px) { .custom-container { padding-left: 5%; padding-right: 5%; } }
+    .product-card:hover img { transform: scale(1.03); }
+  </style>
 </head>
-<body>
 
-  <header class="topbar">
-    <div class="topbar__inner">
-      <a class="brand" href="#">
-        <span class="brand__mark">SW</span>
-        <span class="brand__name">Sapi Watches</span>
-      </a>
+<body class="bg-background-dark text-slate-100 font-display selection:bg-primary/30">
 
-      <nav class="nav">
-        <a href="#coleccion">Colección</a>
-        <a href="#about">About</a>
-        <a href="#footer">Contacto</a>
+  <!-- TOP BAR -->
+  <header class="fixed top-0 left-0 right-0 z-50 bg-background-dark/80 backdrop-blur-md border-b border-white/5">
+    <div class="custom-container h-24 flex items-center justify-between gap-6">
+      <div class="flex items-center gap-2">
+        <span class="text-xl font-bold tracking-tighter uppercase">
+          SW <span class="text-primary font-light">|</span> Sapi Watches
+        </span>
+      </div>
+
+      <nav class="hidden md:flex items-center space-x-10 text-[11px] uppercase tracking-[0.3em] font-medium">
+        <a class="hover:text-primary transition-colors" href="#coleccion">Colección</a>
+        <a class="hover:text-primary transition-colors" href="#about">Acerca de</a>
+        <a class="hover:text-primary transition-colors" href="#footer">Contacto</a>
       </nav>
+
+      <!-- Toolbar (conecta con JS) -->
+      <div class="hidden lg:flex items-center gap-3">
+        <input
+          id="search"
+          type="search"
+          placeholder="Buscar por título…"
+          class="h-10 w-64 rounded-full bg-white/5 border border-white/10 text-sm px-4 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/40"
+        />
+        <select
+          id="sort"
+          class="h-10 rounded-full bg-white/5 border border-white/10 text-sm px-4 text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/40"
+        >
+          <option value="name_asc">A–Z</option>
+        </select>
+        <button
+          id="loadMore"
+          type="button"
+          class="h-10 rounded-full bg-primary text-white text-xs font-bold uppercase tracking-widest px-5 hover:bg-primary/90 disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          Cargar más
+        </button>
+      </div>
+
+      <button class="md:hidden">
+        <span class="material-symbols-outlined">menu</span>
+      </button>
     </div>
   </header>
 
-  <main class="page">
-    <section class="hero" id="about">
-      <div class="hero__inner">
-        <div class="hero__left">
-          <h1 class="hero__title">Relojes con actitud.</h1>
-          <p class="hero__lead">
-            Curados por <strong>Sapi</strong>. Nada de humo: piezas bonitas, directas y con link al producto.
+  <!-- HERO -->
+  <section class="relative h-screen flex items-center overflow-hidden" id="about">
+    <div class="absolute inset-0 z-0">
+      <img
+        alt="Premium Minimalist Watch Hero"
+        class="w-full h-full object-cover opacity-40 grayscale"
+        src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=2400&q=80"
+      />
+      <div class="absolute inset-0 bg-gradient-to-t from-background-dark via-transparent to-transparent"></div>
+    </div>
+
+    <div class="custom-container relative z-10 w-full pt-24">
+      <div class="max-w-4xl">
+        <span class="inline-block text-primary font-medium tracking-[0.4em] uppercase mb-8 text-xs">
+          Editorial Concept v.01
+        </span>
+
+        <h1 class="text-7xl md:text-9xl font-bold tracking-tighter mb-10 leading-[0.85]">
+          El tiempo también <br/>es <span class="text-primary">diseño.</span>
+        </h1>
+
+        <p class="text-xl md:text-2xl text-slate-400 max-w-xl mb-14 font-light leading-relaxed">
+          Una selección curada de relojes con personalidad. Piezas que trascienden la mera función para convertirse en arquitectura de muñeca.
+        </p>
+
+        <div class="flex flex-col sm:flex-row gap-6">
+          <a class="bg-primary hover:bg-primary/90 text-white px-12 py-5 text-sm uppercase tracking-widest font-bold transition-all text-center" href="#coleccion">
+            Ver colección
+          </a>
+
+          <!-- Toolbar mobile/tablet -->
+          <div class="lg:hidden flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+            <input id="searchMobile" type="search" placeholder="Buscar por título…"
+              class="h-12 w-full sm:w-72 rounded-full bg-white/5 border border-white/10 text-sm px-5 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/40" />
+            <button id="loadMoreMobile" type="button"
+              class="h-12 rounded-full bg-white/10 text-white text-xs font-bold uppercase tracking-widest px-7 hover:bg-white/15 disabled:opacity-60 disabled:cursor-not-allowed">
+              Cargar más
+            </button>
+          </div>
+        </div>
+
+        <div id="status" class="mt-10 text-slate-500 text-sm min-h-[18px]"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CATALOG -->
+  <section class="py-32 bg-background-dark" id="coleccion">
+    <div class="custom-container">
+      <div class="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-8">
+        <div class="max-w-2xl">
+          <h2 class="text-4xl font-bold mb-6 tracking-tight uppercase">Catálogo Curado</h2>
+          <div class="h-px w-20 bg-primary mb-6"></div>
+          <p class="text-slate-500 text-lg font-light leading-relaxed italic">
+            La simplicidad es la máxima sofisticación.
           </p>
-
-          <div class="hero__meta">
-            <div class="meta">
-              <div class="meta__k">Qué</div>
-              <div class="meta__v">Selección / catálogo</div>
-            </div>
-            <div class="meta">
-              <div class="meta__k">Orden</div>
-              <div class="meta__v">A–Z + búsqueda</div>
-            </div>
-            <div class="meta">
-              <div class="meta__k">Fuente</div>
-              <div class="meta__v">Supabase</div>
-            </div>
-          </div>
         </div>
 
-        <div class="hero__right">
-          <div class="toolbox">
-            <div class="toolbox__row">
-              <input id="search" type="search" placeholder="Buscar por título…" />
-              <select id="sort">
-                <option value="name_asc">A–Z</option>
-              </select>
-              <button id="loadMore" type="button">Cargar más</button>
-            </div>
-            <div id="status" class="status"></div>
-          </div>
-
-          <div class="hero__card">
-            <div class="hero__cardTitle">Manifiesto</div>
-            <p class="hero__cardText">
-              “El tiempo es raro. Los relojes también. Vamos a disfrutarlo.”
-            </p>
-            <div class="hero__cardHint">Haz clic en un producto para abrirlo.</div>
-          </div>
+        <div class="hidden lg:flex gap-8 text-[10px] uppercase tracking-[0.2em] font-bold text-slate-500">
+          <span class="text-primary border-b border-primary pb-1">Todos</span>
         </div>
       </div>
-    </section>
 
-    <section class="section" id="coleccion">
-      <div class="section__head">
-        <h2 class="section__title">Colección</h2>
-        <p class="section__subtitle">Resultados en tiempo real desde tu base de datos.</p>
+      <!-- Aquí pinta Supabase -->
+      <div id="grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-16 gap-y-24"></div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="bg-background-dark py-24 border-t border-white/5" id="footer">
+    <div class="custom-container">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-12 mb-20">
+        <div class="col-span-1 md:col-span-2">
+          <h2 class="text-2xl font-bold mb-6 uppercase tracking-tighter">
+            SW <span class="text-primary font-light">|</span> Sapi Watches
+          </h2>
+          <p class="text-slate-500 max-w-sm text-sm leading-relaxed font-light">
+            Un proyecto dedicado a los entusiastas de la relojería que valoran el minimalismo y la estética por encima del ruido. Curado por Sapi.
+          </p>
+        </div>
+
+        <div>
+          <h4 class="text-[10px] uppercase tracking-[0.3em] font-bold mb-8 text-primary">Tienda</h4>
+          <ul class="space-y-4 text-slate-500 text-xs font-medium">
+            <li><a class="hover:text-white transition-colors" href="#coleccion">Colección</a></li>
+            <li><a class="hover:text-white transition-colors" href="#coleccion">Novedades</a></li>
+            <li><a class="hover:text-white transition-colors" href="#coleccion">Top</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h4 class="text-[10px] uppercase tracking-[0.3em] font-bold mb-8 text-primary">Legal</h4>
+          <ul class="space-y-4 text-slate-500 text-xs font-medium">
+            <li><a class="hover:text-white transition-colors" href="#">Privacidad</a></li>
+            <li><a class="hover:text-white transition-colors" href="#">Términos</a></li>
+            <li><a class="hover:text-white transition-colors" href="#">Cookies</a></li>
+          </ul>
+        </div>
       </div>
 
-      <div id="grid" class="grid"></div>
-    </section>
-
-    <footer class="footer" id="footer">
-      <div class="footer__inner">
-        <div class="footer__brand">Sapi Watches</div>
-        <div class="footer__copy">© <span id="year"></span> — hecho con Supabase + GitHub Pages.</div>
+      <div class="flex flex-col md:flex-row justify-between items-center pt-12 border-t border-white/5 text-[10px] uppercase tracking-widest text-slate-600 font-bold">
+        <p>© <span id="year"></span> Sapi Watches.</p>
+        <div class="flex gap-8 mt-6 md:mt-0">
+          <span>España</span>
+        </div>
       </div>
-    </footer>
-  </main>
+    </div>
+  </footer>
 
   <script>
     document.getElementById("year").textContent = new Date().getFullYear();
   </script>
 
+  <!-- Supabase + App -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="script.js?v=3"></script>
+  <script src="script.js?v=10"></script>
 </body>
 </html>
