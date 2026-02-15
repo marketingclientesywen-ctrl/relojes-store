@@ -2,9 +2,8 @@
 <html class="dark" lang="es">
 <head>
   <meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <title>Sapi Watches</title>
-
 
   <!-- Tailwind CDN -->
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
@@ -25,59 +24,55 @@
             "neutral-dark": "#141414",
             "neutral-border": "#262626",
           },
-          fontFamily: {
-            "display": ["Space Grotesk"]
-          },
+          fontFamily: { "display": ["Space Grotesk"] },
           borderRadius: {"DEFAULT": "0px", "lg": "0px", "xl": "0px", "full": "9999px"},
         },
       },
     }
   </script>
 
-  <!-- Tiny custom css -->
   <style type="text/tailwindcss">
-body { font-family: 'Space Grotesk', sans-serif; }
-html { scroll-behavior: smooth; }
+    body { font-family: 'Space Grotesk', sans-serif; }
+    html { scroll-behavior: smooth; }
     .custom-container { padding-left: 150px; padding-right: 150px; }
     @media (max-width: 1280px) { .custom-container { padding-left: 5%; padding-right: 5%; } }
     .product-card:hover img { transform: scale(1.03); }
   </style>
 </head>
 
-<body class="bg-background-dark text-slate-100 font-display selection:bg-primary/30 pt-24">
- <!-- Mobile Brands Drawer -->
-<div id="mobileDrawer" class="hidden fixed inset-0 z-[60]">
-  <!-- backdrop -->
-  <div id="mobileDrawerBackdrop" class="absolute inset-0 bg-black/60"></div>
+<body class="bg-background-dark text-slate-100 font-display selection:bg-primary/30">
 
-  <!-- panel -->
-  <div class="absolute right-0 top-0 h-full w-[88vw] max-w-[420px] bg-background-dark border-l border-white/10 shadow-2xl p-5 overflow-y-auto">
-    <div class="flex items-center justify-between mb-4">
-      <div class="text-[10px] uppercase tracking-[0.3em] font-bold text-slate-500">Marcas</div>
-      <button id="mobileDrawerClose" class="text-slate-200/80 hover:text-primary" type="button" aria-label="Cerrar">
-        <span class="material-symbols-outlined">close</span>
-      </button>
-    </div>
+  <!-- Mobile Brands Drawer -->
+  <div id="mobileDrawer" class="hidden fixed inset-0 z-[60]">
+    <div id="mobileDrawerBackdrop" class="absolute inset-0 bg-black/60"></div>
 
-    <div class="flex items-center justify-between mb-4">
-      <button id="mobileBrandsAll"
-        class="text-[10px] uppercase tracking-[0.25em] font-bold text-primary hover:opacity-90"
-        type="button">
-        Todas
-      </button>
-      <div class="text-xs text-slate-500" id="mobileBrandStatus"></div>
-    </div>
+    <div class="absolute right-0 top-0 h-full w-[88vw] max-w-[420px] bg-background-dark border-l border-white/10 shadow-2xl p-5 overflow-y-auto">
+      <div class="flex items-center justify-between mb-4">
+        <div class="text-[10px] uppercase tracking-[0.3em] font-bold text-slate-500">Marcas</div>
+        <button id="mobileDrawerClose" class="text-slate-200/80 hover:text-primary" type="button" aria-label="Cerrar">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
 
-    <div id="mobileBrandsGrid" class="grid grid-cols-1 gap-3">
-      <div class="text-slate-500 text-xs">Cargando marcas…</div>
+      <div class="flex items-center justify-between mb-4">
+        <button id="mobileBrandsAll"
+          class="text-[10px] uppercase tracking-[0.25em] font-bold text-primary hover:opacity-90"
+          type="button">
+          Todas
+        </button>
+        <div class="text-xs text-slate-500" id="mobileBrandStatus"></div>
+      </div>
+
+      <div id="mobileBrandsGrid" class="grid grid-cols-1 gap-3">
+        <div class="text-slate-500 text-xs">Cargando marcas…</div>
+      </div>
     </div>
   </div>
-</div>
+
   <!-- TOP BAR -->
   <header class="fixed top-0 left-0 right-0 z-50 bg-background-dark/80 backdrop-blur-md border-b border-white/5">
     <div class="custom-container h-24 flex items-center justify-between gap-6">
 
-      <!-- Brand -->
       <div class="flex items-center gap-2">
         <span class="text-xl font-bold tracking-tighter uppercase">
           SW <span class="text-primary font-light">|</span> Sapi Watches
@@ -87,7 +82,8 @@ html { scroll-behavior: smooth; }
       <!-- Brands dropdown (desktop) -->
       <div class="hidden md:block relative">
         <button id="brandsBtn"
-          class="flex items-center gap-3 text-[11px] uppercase tracking-[0.3em] font-medium text-slate-200/80 hover:text-primary transition-colors">
+          class="flex items-center gap-3 text-[11px] uppercase tracking-[0.3em] font-medium text-slate-200/80 hover:text-primary transition-colors"
+          type="button">
           Marcas
           <span class="material-symbols-outlined text-base opacity-70">expand_more</span>
         </button>
@@ -109,7 +105,7 @@ html { scroll-behavior: smooth; }
         </div>
       </div>
 
-      <!-- Toolbar (conecta con JS) -->
+      <!-- Toolbar desktop -->
       <div class="hidden lg:flex items-center gap-3">
         <input
           id="search"
@@ -132,150 +128,148 @@ html { scroll-behavior: smooth; }
         </button>
       </div>
 
-      <!-- Mobile button (si luego quieres abrir menú marcas en mobile) -->
-<button id="mobileMenuBtn" class="md:hidden" type="button" aria-label="Abrir menú">
-  <span class="material-symbols-outlined">menu</span>
-</button>
+      <!-- Mobile menu button -->
+      <button id="mobileMenuBtn" class="md:hidden" type="button" aria-label="Abrir menú">
+        <span class="material-symbols-outlined">menu</span>
+      </button>
 
     </div>
   </header>
 
-  <!-- HERO -->
-<section class="relative min-h-[50svh] md:min-h-[105vh] pt-24 md:pt-28 flex items-center overflow-hidden" id="about">
-    <div class="absolute inset-0 z-0">
-      <img
-        alt="Premium Minimalist Watch Hero"
-        class="w-full h-full object-cover opacity-40 grayscale"
-        src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=2400&q=80"
-      />
-      <div class="absolute inset-0 bg-gradient-to-t from-background-dark via-transparent to-transparent"></div>
-    </div>
+  <!-- MAIN CONTENT (aquí metemos el padding-top en vez del body) -->
+  <main class="pt-24">
 
-    <div class="custom-container relative z-10 w-full pt-24">
-      <div class="max-w-4xl">
-        <span class="inline-block text-primary font-medium tracking-[0.4em] uppercase mb-8 text-xs">
-          Editorial Concept v.01
-        </span>
+    <!-- HERO -->
+    <section class="relative min-h-[50svh] md:min-h-[105vh] pt-10 md:pt-28 flex items-center overflow-hidden" id="about">
+      <div class="absolute inset-0 z-0">
+        <img
+          alt="Premium Minimalist Watch Hero"
+          class="w-full h-full object-cover opacity-40"
+          src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=2400&q=80"
+        />
+        <div class="absolute inset-0 bg-gradient-to-t from-background-dark via-transparent to-transparent"></div>
+      </div>
 
-<h1 class="text-4xl sm:text-5xl md:text-7xl lg:text-9xl font-bold tracking-tighter mb-6 md:mb-10 leading-[0.9]">
-          El tiempo también <br/>es <span class="text-primary">diseño.</span>
-        </h1>
+      <div class="custom-container relative z-10 w-full pt-10 md:pt-24">
+        <div class="max-w-4xl">
+          <span class="inline-block text-primary font-medium tracking-[0.4em] uppercase mb-6 text-xs">
+            Editorial Concept v.01
+          </span>
 
-<p class="text-base sm:text-lg md:text-2xl text-slate-400 max-w-xl mb-8 md:mb-14 font-light leading-relaxed">
-          Una selección curada de relojes con personalidad. Piezas que trascienden la mera función para convertirse en arquitectura de muñeca.
-        </p>
+          <h1 class="text-4xl sm:text-5xl md:text-7xl lg:text-9xl font-bold tracking-tighter mb-6 md:mb-10 leading-[0.9]">
+            El tiempo también <br/>es <span class="text-primary">diseño.</span>
+          </h1>
 
-        <div class="flex flex-col sm:flex-row gap-6">
-<a class="bg-primary hover:bg-primary/90 text-white px-8 py-4 md:px-12 md:py-5 text-sm uppercase tracking-widest font-bold transition-all text-center">
-            Ver colección
-          </a>
+          <p class="text-base sm:text-lg md:text-2xl text-slate-400 max-w-xl mb-8 md:mb-14 font-light leading-relaxed">
+            Una selección curada de relojes con personalidad. Piezas que trascienden la mera función para convertirse en arquitectura de muñeca.
+          </p>
 
-          <!-- Toolbar mobile/tablet -->
-          <div class="lg:hidden flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-            <input id="searchMobile" type="search" placeholder="Buscar por título…"
-              class="h-12 w-full sm:w-72 rounded-full bg-white/5 border border-white/10 text-sm px-5 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/40" />
-            <button id="loadMoreMobile" type="button"
-              class="h-12 rounded-full bg-white/10 text-white text-xs font-bold uppercase tracking-widest px-7 hover:bg-white/15 disabled:opacity-60 disabled:cursor-not-allowed">
-              Cargar más
-            </button>
+          <div class="flex flex-col sm:flex-row gap-6">
+            <a class="bg-primary hover:bg-primary/90 text-white px-8 py-4 md:px-12 md:py-5 text-sm uppercase tracking-widest font-bold transition-all text-center"
+               href="#coleccion">
+              Ver colección
+            </a>
+
+            <!-- Toolbar mobile/tablet -->
+            <div class="lg:hidden flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+              <input id="searchMobile" type="search" placeholder="Buscar por título…"
+                class="h-12 w-full sm:w-72 rounded-full bg-white/5 border border-white/10 text-sm px-5 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/40" />
+              <button id="loadMoreMobile" type="button"
+                class="h-12 rounded-full bg-white/10 text-white text-xs font-bold uppercase tracking-widest px-7 hover:bg-white/15 disabled:opacity-60 disabled:cursor-not-allowed">
+                Cargar más
+              </button>
+            </div>
+          </div>
+
+          <div id="status" class="mt-8 text-slate-500 text-sm min-h-[18px]"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CATALOG -->
+    <section class="py-28 bg-background-dark" id="coleccion">
+      <div class="custom-container">
+
+        <!-- STRIP MARCAS -->
+        <div class="mb-14">
+          <div class="flex items-center justify-between gap-4 mb-5">
+            <div class="text-[10px] uppercase tracking-[0.3em] font-bold text-slate-500">Marcas</div>
+
+            <div class="flex items-center gap-2">
+              <button id="brandsStripPrev"
+                class="h-9 w-9 grid place-items-center border border-white/10 bg-white/5 hover:bg-white/10 transition disabled:opacity-50"
+                type="button" aria-label="Anterior">
+                <span class="material-symbols-outlined text-base">chevron_left</span>
+              </button>
+
+              <button id="brandsStripNext"
+                class="h-9 w-9 grid place-items-center border border-white/10 bg-white/5 hover:bg-white/10 transition disabled:opacity-50"
+                type="button" aria-label="Siguiente">
+                <span class="material-symbols-outlined text-base">chevron_right</span>
+              </button>
+            </div>
+          </div>
+
+          <div id="brandsStrip" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div class="text-slate-500 text-xs">Cargando marcas…</div>
           </div>
         </div>
 
-        <div id="status" class="mt-10 text-slate-500 text-sm min-h-[18px]"></div>
+        <!-- Header catálogo -->
+        <div class="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-8">
+          <div class="max-w-2xl">
+            <h2 class="text-4xl font-bold mb-6 tracking-tight uppercase">Catálogo Curado</h2>
+            <div class="h-px w-20 bg-primary mb-6"></div>
+            <p class="text-slate-500 text-lg font-light leading-relaxed italic">
+              La simplicidad es la máxima sofisticación.
+            </p>
+          </div>
+        </div>
+
+        <div id="grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-16 gap-y-24"></div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- CATALOG -->
-  <section class="py-32 bg-background-dark" id="coleccion">
-    <div class="custom-container">
-      <div class="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-8">
+    <!-- FOOTER -->
+    <footer class="bg-background-dark py-24 border-t border-white/5" id="footer">
+      <div class="custom-container">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-12 mb-20">
+          <div class="col-span-1 md:col-span-2">
+            <h2 class="text-2xl font-bold mb-6 uppercase tracking-tighter">
+              SW <span class="text-primary font-light">|</span> Sapi Watches
+            </h2>
+            <p class="text-slate-500 max-w-sm text-sm leading-relaxed font-light">
+              Un proyecto dedicado a los entusiastas de la relojería que valoran el minimalismo y la estética por encima del ruido. Curado por Sapi.
+            </p>
+          </div>
 
-            <!-- STRIP MARCAS (antes del catálogo) -->
-    <div class="mb-14">
-      <div class="flex items-center justify-between gap-4 mb-5">
-        <div class="text-[10px] uppercase tracking-[0.3em] font-bold text-slate-500">
-          Marcas
+          <div>
+            <h4 class="text-[10px] uppercase tracking-[0.3em] font-bold mb-8 text-primary">Tienda</h4>
+            <ul class="space-y-4 text-slate-500 text-xs font-medium">
+              <li><a class="hover:text-white transition-colors" href="#coleccion">Colección</a></li>
+              <li><a class="hover:text-white transition-colors" href="#coleccion">Novedades</a></li>
+              <li><a class="hover:text-white transition-colors" href="#coleccion">Top</a></li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 class="text-[10px] uppercase tracking-[0.3em] font-bold mb-8 text-primary">Legal</h4>
+            <ul class="space-y-4 text-slate-500 text-xs font-medium">
+              <li><a class="hover:text-white transition-colors" href="#">Privacidad</a></li>
+              <li><a class="hover:text-white transition-colors" href="#">Términos</a></li>
+              <li><a class="hover:text-white transition-colors" href="#">Cookies</a></li>
+            </ul>
+          </div>
         </div>
 
-        <div class="flex items-center gap-2">
-          <button id="brandsStripPrev"
-            class="h-9 w-9 grid place-items-center border border-white/10 bg-white/5 hover:bg-white/10 transition"
-            type="button" aria-label="Anterior">
-            <span class="material-symbols-outlined text-base">chevron_left</span>
-          </button>
-
-          <button id="brandsStripNext"
-            class="h-9 w-9 grid place-items-center border border-white/10 bg-white/5 hover:bg-white/10 transition"
-            type="button" aria-label="Siguiente">
-            <span class="material-symbols-outlined text-base">chevron_right</span>
-          </button>
-        </div>
-      </div>
-
-      <div id="brandsStrip" class="grid grid-cols-3 gap-3">
-        <div class="text-slate-500 text-xs">Cargando marcas…</div>
-      </div>
-    </div>
-
-        <div class="max-w-2xl">
-          <h2 class="text-4xl font-bold mb-6 tracking-tight uppercase">Catálogo Curado</h2>
-          <div class="h-px w-20 bg-primary mb-6"></div>
-          <p class="text-slate-500 text-lg font-light leading-relaxed italic">
-            La simplicidad es la máxima sofisticación.
-          </p>
-        </div>
-
-        <div class="hidden lg:flex gap-8 text-[10px] uppercase tracking-[0.2em] font-bold text-slate-500">
-          <span class="text-primary border-b border-primary pb-1">Todos</span>
-        </div>
-      </div>
-
-      <!-- Aquí pinta Supabase -->
-      <div id="grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-16 gap-y-24"></div>
-    </div>
-  </section>
-
-  <!-- FOOTER -->
-  <footer class="bg-background-dark py-24 border-t border-white/5" id="footer">
-    <div class="custom-container">
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-12 mb-20">
-        <div class="col-span-1 md:col-span-2">
-          <h2 class="text-2xl font-bold mb-6 uppercase tracking-tighter">
-            SW <span class="text-primary font-light">|</span> Sapi Watches
-          </h2>
-          <p class="text-slate-500 max-w-sm text-sm leading-relaxed font-light">
-            Un proyecto dedicado a los entusiastas de la relojería que valoran el minimalismo y la estética por encima del ruido. Curado por Sapi.
-          </p>
-        </div>
-
-        <div>
-          <h4 class="text-[10px] uppercase tracking-[0.3em] font-bold mb-8 text-primary">Tienda</h4>
-          <ul class="space-y-4 text-slate-500 text-xs font-medium">
-            <li><a class="hover:text-white transition-colors" href="#coleccion">Colección</a></li>
-            <li><a class="hover:text-white transition-colors" href="#coleccion">Novedades</a></li>
-            <li><a class="hover:text-white transition-colors" href="#coleccion">Top</a></li>
-          </ul>
-        </div>
-
-        <div>
-          <h4 class="text-[10px] uppercase tracking-[0.3em] font-bold mb-8 text-primary">Legal</h4>
-          <ul class="space-y-4 text-slate-500 text-xs font-medium">
-            <li><a class="hover:text-white transition-colors" href="#">Privacidad</a></li>
-            <li><a class="hover:text-white transition-colors" href="#">Términos</a></li>
-            <li><a class="hover:text-white transition-colors" href="#">Cookies</a></li>
-          </ul>
+        <div class="flex flex-col md:flex-row justify-between items-center pt-12 border-t border-white/5 text-[10px] uppercase tracking-widest text-slate-600 font-bold">
+          <p>© <span id="year"></span> Sapi Watches.</p>
+          <div class="flex gap-8 mt-6 md:mt-0"><span>España</span></div>
         </div>
       </div>
+    </footer>
 
-      <div class="flex flex-col md:flex-row justify-between items-center pt-12 border-t border-white/5 text-[10px] uppercase tracking-widest text-slate-600 font-bold">
-        <p>© <span id="year"></span> Sapi Watches.</p>
-        <div class="flex gap-8 mt-6 md:mt-0">
-          <span>España</span>
-        </div>
-      </div>
-    </div>
-  </footer>
+  </main>
 
   <script>
     document.getElementById("year").textContent = new Date().getFullYear();
@@ -284,11 +278,5 @@ html { scroll-behavior: smooth; }
   <!-- Supabase + App -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="script.js?v=12"></script>
-<script>
-  window.addEventListener("load", () => {
-    window.scrollTo(0, 0);
-  });
-</script>
-
 </body>
 </html>
