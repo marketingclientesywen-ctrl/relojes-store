@@ -1,5 +1,5 @@
 // ==========================
-// Sapi Watches - Supabase Catalog + Brands Menu (Desktop + Mobile)
+// Sapi Watches - Supabase Catalog + Brands (Header + Mobile + Strip)
 // ==========================
 
 // CONFIG
@@ -7,7 +7,6 @@ const SUPABASE_URL = "https://gwprzkuuxhnixovmniaj.supabase.co";
 const SUPABASE_KEY = "sb_publishable_pd2KxCYegn_GRt5VCvjbnw_fBSIIu8r";
 const TABLE_NAME = "base_productos";
 
-// Columnas EXACTAS según tu tabla (con mayúsculas)
 const COL = {
   title: "Titulo",
   image: "Imagen",
@@ -15,7 +14,6 @@ const COL = {
   url: "Titulo_URL",
 };
 
-// Brands table columns
 const BRAND = {
   table: "brands",
   id: "id",
@@ -23,7 +21,6 @@ const BRAND = {
   logo: "logo_url",
 };
 
-// INIT
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // UI
@@ -32,13 +29,12 @@ const statusEl = document.getElementById("status");
 
 const searchEl = document.getElementById("search");
 const searchMobileEl = document.getElementById("searchMobile");
-
 const sortEl = document.getElementById("sort");
 
 const loadMoreBtn = document.getElementById("loadMore");
 const loadMoreMobileBtn = document.getElementById("loadMoreMobile");
 
-// Desktop brands dropdown
+// Header brands dropdown
 const brandsBtn = document.getElementById("brandsBtn");
 const brandsMenu = document.getElementById("brandsMenu");
 const brandsGrid = document.getElementById("brandsGrid");
@@ -51,15 +47,23 @@ const mobileDrawerBackdrop = document.getElementById("mobileDrawerBackdrop");
 const mobileDrawerClose = document.getElementById("mobileDrawerClose");
 const mobileBrandsGrid = document.getElementById("mobileBrandsGrid");
 const mobileBrandsAllBtn = document.getElementById("mobileBrandsAll");
-const mobileBrandStatus = document.getElementById("mobileBrandStatus"); // opcional
+const mobileBrandStatus = document.getElementById("mobileBrandStatus");
 
-let currentBrandId = null; // null = todas
+// Brands strip (antes del catálogo)
+const brandsStrip = document.getElementById("brandsStrip");
+const brandsStripPrev = document.getElementById("brandsStripPrev");
+const brandsStripNext = document.getElementById("brandsStripNext");
 
+let brandsData = [];
+let brandsStripPage = 0;
+const BRANDS_PER_VIEW = 3;
+
+// Paging products
+let currentBrandId = null;
 let page = 0;
 const FIRST_LOAD = 9;
 const PAGE_SIZE = 24;
 let loading = false;
-
 
 let lastQuery = "";
 let lastSort = "name_asc";
@@ -88,15 +92,13 @@ function normalizePrice(p) {
 }
 
 // --------------------------
-// Desktop dropdown
+// Header dropdown
 // --------------------------
 function closeBrandsMenu() {
-  if (!brandsMenu) return;
-  brandsMenu.classList.add("hidden");
+  if (brandsMenu) brandsMenu.classList.add("hidden");
 }
 function toggleBrandsMenu() {
-  if (!brandsMenu) return;
-  brandsMenu.classList.toggle("hidden");
+  if (brandsMenu) brandsMenu.classList.toggle("hidden");
 }
 
 // --------------------------
@@ -163,9 +165,37 @@ function bindBrandClicks(container, onPick) {
   });
 }
 
+// ---- Strip 3 en 3
+function renderBrandsStrip() {
+  if (!brandsStrip) return;
+
+  if (!brandsData.length) {
+    brandsStrip.innerHTML = `<div class="text-slate-500 text-xs">No hay marcas.</div>`;
+    return;
+  }
+
+  const totalPages = Math.ceil(brandsData.length / BRANDS_PER_VIEW);
+  brandsStripPage = Math.max(0, Math.min(brandsStripPage, totalPages - 1));
+
+  const start = brandsStripPage * BRANDS_PER_VIEW;
+  const slice = brandsData.slice(start, start + BRANDS_PER_VIEW);
+
+  brandsStrip.innerHTML = slice.map(brandCard).join("");
+
+  bindBrandClicks(brandsStrip, (id) => {
+    currentBrandId = id;
+    fetchProducts({ reset: true });
+    document.getElementById("grid")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+
+  if (brandsStripPrev) brandsStripPrev.disabled = (brandsStripPage === 0);
+  if (brandsStripNext) brandsStripNext.disabled = (brandsStripPage >= totalPages - 1);
+}
+
 async function loadBrands() {
   if (brandsGrid) brandsGrid.innerHTML = `<div class="text-slate-500 text-xs">Cargando marcas…</div>`;
   if (mobileBrandsGrid) mobileBrandsGrid.innerHTML = `<div class="text-slate-500 text-xs">Cargando marcas…</div>`;
+  if (brandsStrip) brandsStrip.innerHTML = `<div class="text-slate-500 text-xs">Cargando marcas…</div>`;
 
   const { data, error } = await sb
     .from(BRAND.table)
@@ -176,14 +206,20 @@ async function loadBrands() {
     console.error("Brands error:", error);
     if (brandsGrid) brandsGrid.innerHTML = `<div class="text-slate-500 text-xs">Error cargando marcas.</div>`;
     if (mobileBrandsGrid) mobileBrandsGrid.innerHTML = `<div class="text-slate-500 text-xs">Error cargando marcas.</div>`;
+    if (brandsStrip) brandsStrip.innerHTML = `<div class="text-slate-500 text-xs">Error cargando marcas.</div>`;
     return;
   }
 
   if (!data || data.length === 0) {
     if (brandsGrid) brandsGrid.innerHTML = `<div class="text-slate-500 text-xs">No hay marcas.</div>`;
     if (mobileBrandsGrid) mobileBrandsGrid.innerHTML = `<div class="text-slate-500 text-xs">No hay marcas.</div>`;
+    if (brandsStrip) brandsStrip.innerHTML = `<div class="text-slate-500 text-xs">No hay marcas.</div>`;
     return;
   }
+
+  brandsData = data;
+  brandsStripPage = 0;
+  renderBrandsStrip();
 
   const html = data.map(brandCard).join("");
   if (brandsGrid) brandsGrid.innerHTML = html;
@@ -205,7 +241,7 @@ async function loadBrands() {
 }
 
 // --------------------------
-// Product card (SIN FILTRO)
+// Product card (SIN gris)
 // --------------------------
 function productCard(p) {
   const title = escapeHtml(p?.[COL.title] ?? "Sin título");
@@ -219,7 +255,7 @@ function productCard(p) {
       <div class="bg-neutral-dark aspect-[4/5] overflow-hidden mb-8 relative border border-white/5 shadow-2xl">
         ${
           img
-            ? `<img src="${img}" alt="${title}" class="w-full h-full object-cover" loading="lazy"
+            ? `<img src="${img}" alt="${title}" class="w-full h-full object-cover transition-transform duration-700" loading="lazy"
                  onerror="this.style.display='none'; this.parentElement.innerHTML='<div class=&quot;w-full h-full grid place-items-center text-slate-500 text-sm&quot;>Imagen no disponible</div>';" />`
             : `<div class="w-full h-full grid place-items-center text-slate-500 text-sm">Sin imagen</div>`
         }
@@ -271,10 +307,10 @@ async function fetchProducts({ reset = false } = {}) {
   setStatus("Cargando…");
   if (loadMoreBtn) loadMoreBtn.disabled = true;
   if (loadMoreMobileBtn) loadMoreMobileBtn.disabled = true;
-const size = (page === 0) ? FIRST_LOAD : PAGE_SIZE;
-const from = page === 0 ? 0 : (FIRST_LOAD + (page - 1) * PAGE_SIZE);
-const to = from + size - 1;
 
+  const size = (page === 0) ? FIRST_LOAD : PAGE_SIZE;
+  const from = page === 0 ? 0 : (FIRST_LOAD + (page - 1) * PAGE_SIZE);
+  const to = from + size - 1;
 
   let q = sb
     .from(TABLE_NAME)
@@ -342,7 +378,7 @@ if (sortEl) {
 if (loadMoreBtn) loadMoreBtn.addEventListener("click", () => fetchProducts());
 if (loadMoreMobileBtn) loadMoreMobileBtn.addEventListener("click", () => fetchProducts());
 
-// Desktop brands dropdown
+// Header dropdown
 if (brandsBtn) {
   brandsBtn.addEventListener("click", (e) => {
     e.preventDefault();
@@ -358,7 +394,6 @@ if (brandsAllBtn) {
   });
 }
 
-// Close desktop dropdown on outside click
 document.addEventListener("click", (e) => {
   if (!brandsMenu || !brandsBtn) return;
   const inside = brandsMenu.contains(e.target) || brandsBtn.contains(e.target);
@@ -378,7 +413,21 @@ if (mobileBrandsAllBtn) {
   });
 }
 
-// ESC closes dropdown + drawer
+// Strip buttons
+if (brandsStripPrev) {
+  brandsStripPrev.addEventListener("click", () => {
+    brandsStripPage -= 1;
+    renderBrandsStrip();
+  });
+}
+if (brandsStripNext) {
+  brandsStripNext.addEventListener("click", () => {
+    brandsStripPage += 1;
+    renderBrandsStrip();
+  });
+}
+
+// ESC
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
     closeBrandsMenu();
