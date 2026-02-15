@@ -421,4 +421,72 @@ function bootApp() {
 // Start
 // --------------------------
 checkSessionAndToggleUI();
-sb.auth.onAuthStateChange(() => checkSessionAndToggleUI());
+sb.auth.onAuthStateChange(() => checkSessionAndToggleUI()); 
+// ============================
+// AUTH / LOGIN
+// ============================
+
+const loginForm = document.getElementById("loginForm");
+const loginBox = document.getElementById("loginBox");
+const mainContent = document.getElementById("mainContent");
+const loginError = document.getElementById("loginError");
+
+// Si existe el formulario, activamos el login
+if (loginForm) {
+  loginForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+
+    const { data, error } = await sb.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      if (loginError) loginError.textContent = "Credenciales incorrectas";
+      return;
+    }
+
+    // Login OK
+    if (loginBox) loginBox.style.display = "none";
+    if (mainContent) mainContent.style.display = "block";
+
+    loadUserRole();
+  });
+}
+
+// Detectar sesión ya iniciada
+async function checkSession() {
+  const { data } = await sb.auth.getSession();
+
+  if (data.session) {
+    if (loginBox) loginBox.style.display = "none";
+    if (mainContent) mainContent.style.display = "block";
+    loadUserRole();
+  }
+}
+
+// Cargar rol desde profiles
+async function loadUserRole() {
+  const { data: userData } = await sb.auth.getUser();
+  const userId = userData.user.id;
+
+  const { data: profile } = await sb
+    .from("profiles")
+    .select("role")
+    .eq("user_id", userId)
+    .single();
+
+  if (!profile) return;
+
+  const isAdmin = profile.role === "admin";
+
+  // Mostrar botón "Ver producto" solo si es admin
+  window.IS_ADMIN = isAdmin;
+}
+
+// Ejecutar al cargar
+checkSession();
+
