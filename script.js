@@ -1,10 +1,11 @@
+// script.js
 // ==========================
-// Sapi Watches - Supabase Catalog + Brands (Header + Mobile + Strip)
+// Sapi Watches - Catalog + Brands + Login (admin sees "Ver producto")
 // ==========================
 
 // CONFIG
 const SUPABASE_URL = "https://gwprzkuuxhnixovmniaj.supabase.co";
-const SUPABASE_KEY = "sb_publishable_pd2KxCYegn_GRt5VCvjbnw_fBSIIu8r";
+const SUPABASE_KEY = "PASTE_YOUR_ANON_KEY_HERE"; // <- pon tu anon key real
 const TABLE_NAME = "base_productos";
 
 const COL = {
@@ -21,20 +22,19 @@ const BRAND = {
   logo: "logo_url",
 };
 
+// INIT
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// UI
+// UI (catalog)
 const grid = document.getElementById("grid");
 const statusEl = document.getElementById("status");
-
 const searchEl = document.getElementById("search");
 const searchMobileEl = document.getElementById("searchMobile");
 const sortEl = document.getElementById("sort");
-
 const loadMoreBtn = document.getElementById("loadMore");
 const loadMoreMobileBtn = document.getElementById("loadMoreMobile");
 
-// Header brands dropdown
+// Brands dropdown (desktop)
 const brandsBtn = document.getElementById("brandsBtn");
 const brandsMenu = document.getElementById("brandsMenu");
 const brandsGrid = document.getElementById("brandsGrid");
@@ -49,30 +49,51 @@ const mobileBrandsGrid = document.getElementById("mobileBrandsGrid");
 const mobileBrandsAllBtn = document.getElementById("mobileBrandsAll");
 const mobileBrandStatus = document.getElementById("mobileBrandStatus");
 
-// Brands strip (antes del catálogo)
+// Brands strip (3 en 3)
 const brandsStrip = document.getElementById("brandsStrip");
 const brandsStripPrev = document.getElementById("brandsStripPrev");
 const brandsStripNext = document.getElementById("brandsStripNext");
 
-let brandsData = [];
-let brandsStripPage = 0;
-const BRANDS_PER_VIEW = 3;
+// Auth modal
+const authModal = document.getElementById("authModal");
+const authBackdrop = document.getElementById("authBackdrop");
+const authClose = document.getElementById("authClose");
+const openAuth = document.getElementById("openAuth");
+const openAuthMobile = document.getElementById("openAuthMobile");
 
-// Paging products
+const loginForm = document.getElementById("loginForm");
+const loginEmail = document.getElementById("loginEmail");
+const loginPassword = document.getElementById("loginPassword");
+const loginBtn = document.getElementById("loginBtn");
+const logoutBtn = document.getElementById("logoutBtn");
+const authStatus = document.getElementById("authStatus");
+const roleBadge = document.getElementById("roleBadge");
+
+// State
 let currentBrandId = null;
+let isAdmin = false;
+
 let page = 0;
-const FIRST_LOAD = 9;
+const FIRST_LOAD = 10;
 const PAGE_SIZE = 24;
 let loading = false;
 
 let lastQuery = "";
 let lastSort = "name_asc";
 
+// Brands cache for strip
+let brandsList = [];
+let brandsStripIndex = 0;
+
 // --------------------------
 // Helpers
 // --------------------------
 function setStatus(msg = "") {
   if (statusEl) statusEl.textContent = msg;
+}
+
+function setAuthStatus(msg = "") {
+  if (authStatus) authStatus.textContent = msg;
 }
 
 function escapeHtml(str) {
@@ -92,13 +113,80 @@ function normalizePrice(p) {
 }
 
 // --------------------------
-// Header dropdown
+// Auth (login / logout / role)
+// --------------------------
+function openAuthModal() {
+  if (!authModal) return;
+  authModal.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+}
+
+function closeAuthModal() {
+  if (!authModal) return;
+  authModal.classList.add("hidden");
+  document.body.style.overflow = "";
+}
+
+async function detectRole() {
+  const { data } = await sb.auth.getUser();
+  const user = data?.user;
+
+  if (!user) {
+    isAdmin = false;
+    if (roleBadge) roleBadge.textContent = "";
+    if (logoutBtn) logoutBtn.classList.add("hidden");
+    return;
+  }
+
+  // profiles: user_id (uuid) + role (text: 'admin' | 'client')
+  const { data: prof, error } = await sb
+    .from("profiles")
+    .select("role")
+    .eq("user_id", user.id)
+    .single();
+
+  const role = (!error && prof?.role) ? prof.role : "client";
+  isAdmin = role === "admin";
+
+  if (roleBadge) roleBadge.textContent = isAdmin ? "ADMIN" : "CLIENTE";
+  if (logoutBtn) logoutBtn.classList.remove("hidden");
+}
+
+async function login(email, password) {
+  setAuthStatus("Entrando…");
+  if (loginBtn) loginBtn.disabled = true;
+
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+
+  if (error) {
+    setAuthStatus(error.message);
+    if (loginBtn) loginBtn.disabled = false;
+    return false;
+  }
+
+  setAuthStatus("OK ✅");
+  if (loginBtn) loginBtn.disabled = false;
+  return true;
+}
+
+async function logout() {
+  setAuthStatus("Cerrando sesión…");
+  await sb.auth.signOut();
+  setAuthStatus("");
+  await detectRole();
+  await fetchProducts({ reset: true });
+}
+
+// --------------------------
+// Desktop dropdown
 // --------------------------
 function closeBrandsMenu() {
-  if (brandsMenu) brandsMenu.classList.add("hidden");
+  if (!brandsMenu) return;
+  brandsMenu.classList.add("hidden");
 }
 function toggleBrandsMenu() {
-  if (brandsMenu) brandsMenu.classList.toggle("hidden");
+  if (!brandsMenu) return;
+  brandsMenu.classList.toggle("hidden");
 }
 
 // --------------------------
@@ -165,31 +253,39 @@ function bindBrandClicks(container, onPick) {
   });
 }
 
-// ---- Strip 3 en 3
 function renderBrandsStrip() {
   if (!brandsStrip) return;
-
-  if (!brandsData.length) {
+  if (!brandsList.length) {
     brandsStrip.innerHTML = `<div class="text-slate-500 text-xs">No hay marcas.</div>`;
     return;
   }
 
-  const totalPages = Math.ceil(brandsData.length / BRANDS_PER_VIEW);
-  brandsStripPage = Math.max(0, Math.min(brandsStripPage, totalPages - 1));
-
-  const start = brandsStripPage * BRANDS_PER_VIEW;
-  const slice = brandsData.slice(start, start + BRANDS_PER_VIEW);
-
-  brandsStrip.innerHTML = slice.map(brandCard).join("");
+  const slice = brandsList.slice(brandsStripIndex, brandsStripIndex + 3);
+  const html = slice.map(brandCard).join("");
+  brandsStrip.innerHTML = html;
 
   bindBrandClicks(brandsStrip, (id) => {
     currentBrandId = id;
     fetchProducts({ reset: true });
-    document.getElementById("grid")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    document.getElementById("coleccion")?.scrollIntoView({ behavior: "smooth" });
   });
+}
 
-  if (brandsStripPrev) brandsStripPrev.disabled = (brandsStripPage === 0);
-  if (brandsStripNext) brandsStripNext.disabled = (brandsStripPage >= totalPages - 1);
+function stripNext() {
+  if (!brandsList.length) return;
+  brandsStripIndex += 3;
+  if (brandsStripIndex >= brandsList.length) brandsStripIndex = 0;
+  renderBrandsStrip();
+}
+
+function stripPrev() {
+  if (!brandsList.length) return;
+  brandsStripIndex -= 3;
+  if (brandsStripIndex < 0) {
+    const r = brandsList.length % 3;
+    brandsStripIndex = r === 0 ? brandsList.length - 3 : brandsList.length - r;
+  }
+  renderBrandsStrip();
 }
 
 async function loadBrands() {
@@ -210,20 +306,10 @@ async function loadBrands() {
     return;
   }
 
-  if (!data || data.length === 0) {
-    if (brandsGrid) brandsGrid.innerHTML = `<div class="text-slate-500 text-xs">No hay marcas.</div>`;
-    if (mobileBrandsGrid) mobileBrandsGrid.innerHTML = `<div class="text-slate-500 text-xs">No hay marcas.</div>`;
-    if (brandsStrip) brandsStrip.innerHTML = `<div class="text-slate-500 text-xs">No hay marcas.</div>`;
-    return;
-  }
+  brandsList = data || [];
 
-  brandsData = data;
-  brandsStripPage = 0;
-  renderBrandsStrip();
-
-  const html = data.map(brandCard).join("");
-  if (brandsGrid) brandsGrid.innerHTML = html;
-  if (mobileBrandsGrid) mobileBrandsGrid.innerHTML = html;
+  if (brandsGrid) brandsGrid.innerHTML = brandsList.map(brandCard).join("");
+  if (mobileBrandsGrid) mobileBrandsGrid.innerHTML = brandsList.map(brandCard).join("");
 
   bindBrandClicks(brandsGrid, (id) => {
     currentBrandId = id;
@@ -237,11 +323,14 @@ async function loadBrands() {
     fetchProducts({ reset: true });
   });
 
-  if (mobileBrandStatus) mobileBrandStatus.textContent = `${data.length} marcas`;
+  if (mobileBrandStatus) mobileBrandStatus.textContent = `${brandsList.length} marcas`;
+
+  brandsStripIndex = 0;
+  renderBrandsStrip();
 }
 
 // --------------------------
-// Product card (SIN gris)
+// Product card (admin-only link)
 // --------------------------
 function productCard(p) {
   const title = escapeHtml(p?.[COL.title] ?? "Sin título");
@@ -255,7 +344,7 @@ function productCard(p) {
       <div class="bg-neutral-dark aspect-[4/5] overflow-hidden mb-8 relative border border-white/5 shadow-2xl">
         ${
           img
-            ? `<img src="${img}" alt="${title}" class="w-full h-full object-cover transition-transform duration-700" loading="lazy"
+            ? `<img src="${img}" alt="${title}" class="w-full h-full object-cover" loading="lazy"
                  onerror="this.style.display='none'; this.parentElement.innerHTML='<div class=&quot;w-full h-full grid place-items-center text-slate-500 text-sm&quot;>Imagen no disponible</div>';" />`
             : `<div class="w-full h-full grid place-items-center text-slate-500 text-sm">Sin imagen</div>`
         }
@@ -270,7 +359,7 @@ function productCard(p) {
         <p class="text-slate-500 uppercase tracking-[0.2em] text-[10px]">${brandName}</p>
 
         ${
-          url
+          (isAdmin && url)
             ? `<a class="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.3em] font-bold text-primary pt-4 border-b border-transparent hover:border-primary transition-all"
                  href="${url}" target="_blank" rel="noopener">
                  Ver producto <span class="material-symbols-outlined text-xs">arrow_forward</span>
@@ -291,7 +380,7 @@ function applySort(q, sortValue) {
 }
 
 // --------------------------
-// Fetch products
+// Fetch products (first load 10)
 // --------------------------
 async function fetchProducts({ reset = false } = {}) {
   if (loading) return;
@@ -378,14 +467,13 @@ if (sortEl) {
 if (loadMoreBtn) loadMoreBtn.addEventListener("click", () => fetchProducts());
 if (loadMoreMobileBtn) loadMoreMobileBtn.addEventListener("click", () => fetchProducts());
 
-// Header dropdown
+// Desktop brands dropdown
 if (brandsBtn) {
   brandsBtn.addEventListener("click", (e) => {
     e.preventDefault();
     toggleBrandsMenu();
   });
 }
-
 if (brandsAllBtn) {
   brandsAllBtn.addEventListener("click", () => {
     currentBrandId = null;
@@ -393,7 +481,6 @@ if (brandsAllBtn) {
     fetchProducts({ reset: true });
   });
 }
-
 document.addEventListener("click", (e) => {
   if (!brandsMenu || !brandsBtn) return;
   const inside = brandsMenu.contains(e.target) || brandsBtn.contains(e.target);
@@ -413,28 +500,49 @@ if (mobileBrandsAllBtn) {
   });
 }
 
-// Strip buttons
-if (brandsStripPrev) {
-  brandsStripPrev.addEventListener("click", () => {
-    brandsStripPage -= 1;
-    renderBrandsStrip();
-  });
-}
-if (brandsStripNext) {
-  brandsStripNext.addEventListener("click", () => {
-    brandsStripPage += 1;
-    renderBrandsStrip();
-  });
-}
+// Brands strip controls
+if (brandsStripNext) brandsStripNext.addEventListener("click", stripNext);
+if (brandsStripPrev) brandsStripPrev.addEventListener("click", stripPrev);
 
-// ESC
+// Auth modal events
+if (openAuth) openAuth.addEventListener("click", openAuthModal);
+if (openAuthMobile) openAuthMobile.addEventListener("click", openAuthModal);
+if (authBackdrop) authBackdrop.addEventListener("click", closeAuthModal);
+if (authClose) authClose.addEventListener("click", closeAuthModal);
+
+if (loginForm) {
+  loginForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const ok = await login(loginEmail.value.trim(), loginPassword.value);
+    if (ok) {
+      await detectRole();
+      await fetchProducts({ reset: true });
+      closeAuthModal();
+    }
+  });
+}
+if (logoutBtn) logoutBtn.addEventListener("click", logout);
+
+// ESC closes menus + modal
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
     closeBrandsMenu();
     closeMobileDrawer();
+    closeAuthModal();
   }
 });
 
+// Keep UI in sync if session changes in another tab
+sb.auth.onAuthStateChange(async () => {
+  await detectRole();
+  await fetchProducts({ reset: true });
+});
+
+// --------------------------
 // START
-loadBrands();
-fetchProducts({ reset: true });
+// --------------------------
+(async () => {
+  await detectRole();
+  await loadBrands();
+  await fetchProducts({ reset: true });
+})();
