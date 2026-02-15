@@ -1,7 +1,5 @@
-// script.js (completo)
 // ==========================
-// Sapi Watches - Login gate + Catalog
-// (ahora: si NO hay sesión => solo login centrado)
+// Sapi Watches - Login gate + Catalog (limpio)
 // ==========================
 
 // CONFIG
@@ -10,57 +8,41 @@ const SUPABASE_KEY = "sb_publishable_pd2KxCYegn_GRt5VCvjbnw_fBSIIu8r";
 const TABLE_NAME = "base_productos";
 
 const COL = { title: "Titulo", image: "Imagen", price: "Precio", url: "Titulo_URL" };
-const BRAND = { table: "brands", id: "id", name: "name", logo: "logo_url" };
 
 // INIT
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// LOGIN UI
+// UI (login)
 const loginScreen = document.getElementById("loginScreen");
-const appContent = document.getElementById("appContent");
+const loginForm = document.getElementById("loginForm");
 const loginBtn = document.getElementById("loginBtn");
 const loginMsg = document.getElementById("loginMsg");
 const emailEl = document.getElementById("email");
 const passEl = document.getElementById("password");
 
-// APP UI
+// UI (app)
+const appContent = document.getElementById("appContent");
 const grid = document.getElementById("grid");
 const statusEl = document.getElementById("status");
 const searchEl = document.getElementById("search");
-const searchMobileEl = document.getElementById("searchMobile");
 const sortEl = document.getElementById("sort");
 const loadMoreBtn = document.getElementById("loadMore");
-const loadMoreMobileBtn = document.getElementById("loadMoreMobile");
+const logoutBtn = document.getElementById("logoutBtn");
 
-// Brands UI
-const brandsBtn = document.getElementById("brandsBtn");
-const brandsMenu = document.getElementById("brandsMenu");
-const brandsGrid = document.getElementById("brandsGrid");
-const brandsAllBtn = document.getElementById("brandsAll");
+let IS_ADMIN = false;
 
-// Mobile drawer
-const mobileMenuBtn = document.getElementById("mobileMenuBtn");
-const mobileDrawer = document.getElementById("mobileDrawer");
-const mobileDrawerBackdrop = document.getElementById("mobileDrawerBackdrop");
-const mobileDrawerClose = document.getElementById("mobileDrawerClose");
-const mobileBrandsGrid = document.getElementById("mobileBrandsGrid");
-const mobileBrandsAllBtn = document.getElementById("mobileBrandsAll");
-const mobileBrandStatus = document.getElementById("mobileBrandStatus");
-
-let currentBrandId = null;
+// paging
 let page = 0;
-const FIRST_LOAD = 9;
-const PAGE_SIZE = 24;
+const FIRST_LOAD = 10;  // inicio: 10 relojes
+const PAGE_SIZE = 24;   // siguientes páginas
 let loading = false;
 
 let lastQuery = "";
 let lastSort = "name_asc";
-let appBooted = false;
 
-// --------------------------
-// Helpers
-// --------------------------
-function setStatus(msg = "") { if (statusEl) statusEl.textContent = msg; }
+function setStatus(msg = "") {
+  if (statusEl) statusEl.textContent = msg;
+}
 
 function showLoginError(msg) {
   if (!loginMsg) return;
@@ -83,32 +65,51 @@ function escapeHtml(str) {
     .replaceAll("'", "&#039;");
 }
 
-function normalizePrice(p) {
-  const raw = String(p ?? "").trim();
-  if (!raw) return "";
-  if (/prices on login/i.test(raw)) return "Precio bajo consulta";
-  return raw;
+// --- ROLE ---
+async function loadUserRole() {
+  IS_ADMIN = false;
+
+  const { data: userData, error: userErr } = await sb.auth.getUser();
+  if (userErr || !userData?.user) return;
+
+  const userId = userData.user.id;
+
+  const { data: profile, error } = await sb
+    .from("profiles")
+    .select("role")
+    .eq("user_id", userId)
+    .single();
+
+  if (error || !profile) return;
+
+  IS_ADMIN = profile.role === "admin";
 }
 
-// --------------------------
-// Gate (mostrar login o app)
-// --------------------------
-async function checkSessionAndToggleUI() {
-  const { data: { session }, error } = await sb.auth.getSession();
-  if (error) console.warn("getSession error:", error);
+// --- GATE ---
+async function showApp() {
+  if (loginScreen) loginScreen.classList.add("hidden");
+  if (appContent) appContent.classList.remove("hidden");
+}
 
-  if (session) {
-    if (loginScreen) loginScreen.style.display = "none";
-    if (appContent) appContent.classList.remove("hidden");
-    if (!appBooted) bootApp();
-    return true;
-  } else {
-    if (appContent) appContent.classList.add("hidden");
-    if (loginScreen) loginScreen.style.display = "flex";
+async function showLogin() {
+  if (appContent) appContent.classList.add("hidden");
+  if (loginScreen) loginScreen.classList.remove("hidden");
+}
+
+async function checkSession() {
+  const { data: { session } } = await sb.auth.getSession();
+
+  if (!session) {
+    await showLogin();
     return false;
   }
+
+  await loadUserRole();
+  await showApp();
+  return true;
 }
 
+// --- LOGIN ---
 async function doLogin() {
   clearLoginError();
 
@@ -127,128 +128,44 @@ async function doLogin() {
   if (loginBtn) loginBtn.disabled = false;
 
   if (error) {
-    showLoginError("Login incorrecto.");
+    showLoginError("Credenciales incorrectas.");
     return;
   }
 
-  await checkSessionAndToggleUI();
+  const ok = await checkSession();
+  if (ok) bootApp();
 }
 
-if (loginBtn) loginBtn.addEventListener("click", doLogin);
-if (passEl) passEl.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
-if (emailEl) emailEl.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
-
-// --------------------------
-// Brands dropdown + drawer
-// --------------------------
-function closeBrandsMenu() { if (brandsMenu) brandsMenu.classList.add("hidden"); }
-function toggleBrandsMenu() { if (brandsMenu) brandsMenu.classList.toggle("hidden"); }
-
-function openMobileDrawer() {
-  if (!mobileDrawer) return;
-  mobileDrawer.classList.remove("hidden");
-  document.body.style.overflow = "hidden";
-}
-function closeMobileDrawer() {
-  if (!mobileDrawer) return;
-  mobileDrawer.classList.add("hidden");
-  document.body.style.overflow = "";
-}
-
-function brandFallback(name) {
-  const parts = String(name || "B").trim().split(/\s+/);
-  const a = (parts[0]?.[0] || "B").toUpperCase();
-  const b = (parts[1]?.[0] || "").toUpperCase();
-  return (a + b).slice(0, 2);
-}
-
-function brandCard(b) {
-  const name = escapeHtml(b?.[BRAND.name] ?? "Marca");
-  const logo = b?.[BRAND.logo] ? escapeHtml(b[BRAND.logo]) : "";
-  const id = b?.[BRAND.id];
-  const fb = brandFallback(name);
-
-  return `
-    <button class="group text-left flex items-center gap-3 p-3 border border-white/10 hover:border-primary/60 hover:bg-white/5 transition"
-      data-brand-id="${id}" type="button" title="${name}">
-      <div class="w-10 h-10 bg-white/5 border border-white/10 grid place-items-center overflow-hidden">
-        ${
-          logo
-            ? `<img src="${logo}" alt="${name}" class="w-full h-full object-contain p-2 opacity-90 group-hover:opacity-100" loading="lazy"
-                 onerror="this.remove(); this.parentElement.innerHTML='<span class=&quot;text-xs font-bold text-slate-300&quot;'>${fb}</span>';">`
-            : `<span class="text-xs font-bold text-slate-300">${fb}</span>`
-        }
-      </div>
-      <div class="min-w-0">
-        <div class="text-sm font-semibold tracking-tight group-hover:text-primary transition-colors truncate">${name}</div>
-        <div class="text-[10px] uppercase tracking-[0.25em] text-slate-500">Ver relojes</div>
-      </div>
-    </button>
-  `;
-}
-
-function bindBrandClicks(container, onPick) {
-  if (!container) return;
-  container.querySelectorAll("[data-brand-id]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const id = btn.getAttribute("data-brand-id");
-      onPick(id ? Number(id) : null);
-    });
+if (loginForm) {
+  loginForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    doLogin();
   });
 }
 
-async function loadBrands() {
-  if (brandsGrid) brandsGrid.innerHTML = `<div class="text-slate-500 text-xs">Cargando marcas…</div>`;
-  if (mobileBrandsGrid) mobileBrandsGrid.innerHTML = `<div class="text-slate-500 text-xs">Cargando marcas…</div>`;
-
-  const { data, error } = await sb
-    .from(BRAND.table)
-    .select(`${BRAND.id}, ${BRAND.name}, ${BRAND.logo}`)
-    .order(BRAND.name, { ascending: true });
-
-  if (error) {
-    console.error("Brands error:", error);
-    if (brandsGrid) brandsGrid.innerHTML = `<div class="text-slate-500 text-xs">Error cargando marcas.</div>`;
-    if (mobileBrandsGrid) mobileBrandsGrid.innerHTML = `<div class="text-slate-500 text-xs">Error cargando marcas.</div>`;
-    return;
-  }
-
-  const html = (data || []).map(brandCard).join("") || `<div class="text-slate-500 text-xs">No hay marcas.</div>`;
-  if (brandsGrid) brandsGrid.innerHTML = html;
-  if (mobileBrandsGrid) mobileBrandsGrid.innerHTML = html;
-
-  bindBrandClicks(brandsGrid, (id) => {
-    currentBrandId = id;
-    closeBrandsMenu();
-    fetchProducts({ reset: true });
+// --- LOGOUT ---
+if (logoutBtn) {
+  logoutBtn.addEventListener("click", async () => {
+    await sb.auth.signOut();
+    page = 0;
+    if (grid) grid.innerHTML = "";
+    await showLogin();
   });
-
-  bindBrandClicks(mobileBrandsGrid, (id) => {
-    currentBrandId = id;
-    closeMobileDrawer();
-    fetchProducts({ reset: true });
-  });
-
-  if (mobileBrandStatus && data) mobileBrandStatus.textContent = `${data.length} marcas`;
 }
 
-// --------------------------
-// Products
-// --------------------------
+// --- UI PRODUCT ---
 function productCard(p) {
   const title = escapeHtml(p?.[COL.title] ?? "Sin título");
   const img = p?.[COL.image] ? escapeHtml(p[COL.image]) : "";
   const url = p?.[COL.url] ? escapeHtml(p[COL.url]) : "";
-  const priceText = escapeHtml(normalizePrice(p?.[COL.price]));
-  const brandName = escapeHtml(p?.brands?.name ?? "Sin marca");
+  const priceText = escapeHtml(p?.[COL.price] ?? "");
 
   return `
-    <div class="product-card group">
-      <div class="bg-neutral-dark aspect-[4/5] overflow-hidden mb-8 relative border border-white/5 shadow-2xl">
+    <div class="group">
+      <div class="bg-neutral-dark aspect-[4/5] overflow-hidden mb-8 border border-white/5 shadow-2xl">
         ${
           img
-            ? `<img src="${img}" alt="${title}" class="w-full h-full object-cover" loading="lazy"
-                 onerror="this.style.display='none'; this.parentElement.innerHTML='<div class=&quot;w-full h-full grid place-items-center text-slate-500 text-sm&quot;>Imagen no disponible</div>';" />`
+            ? `<img src="${img}" alt="${title}" class="w-full h-full object-cover" loading="lazy">`
             : `<div class="w-full h-full grid place-items-center text-slate-500 text-sm">Sin imagen</div>`
         }
       </div>
@@ -259,15 +176,13 @@ function productCard(p) {
           ${priceText ? `<span class="text-lg font-light text-slate-400 whitespace-nowrap">${priceText}</span>` : ""}
         </div>
 
-        <p class="text-slate-500 uppercase tracking-[0.2em] text-[10px]">${brandName}</p>
-
         ${
-          url
+          (IS_ADMIN && url)
             ? `<a class="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.3em] font-bold text-primary pt-4 border-b border-transparent hover:border-primary transition-all"
                  href="${url}" target="_blank" rel="noopener">
                  Ver producto <span class="material-symbols-outlined text-xs">arrow_forward</span>
                </a>`
-            : ""
+            : ``
         }
       </div>
     </div>
@@ -282,6 +197,7 @@ function applySort(q, sortValue) {
   }
 }
 
+// --- FETCH ---
 async function fetchProducts({ reset = false } = {}) {
   if (loading) return;
   loading = true;
@@ -290,23 +206,16 @@ async function fetchProducts({ reset = false } = {}) {
     page = 0;
     if (grid) grid.innerHTML = "";
     if (loadMoreBtn) loadMoreBtn.disabled = false;
-    if (loadMoreMobileBtn) loadMoreMobileBtn.disabled = false;
   }
 
   setStatus("Cargando…");
   if (loadMoreBtn) loadMoreBtn.disabled = true;
-  if (loadMoreMobileBtn) loadMoreMobileBtn.disabled = true;
 
   const size = (page === 0) ? FIRST_LOAD : PAGE_SIZE;
   const from = page === 0 ? 0 : (FIRST_LOAD + (page - 1) * PAGE_SIZE);
   const to = from + size - 1;
 
-  let q = sb
-    .from(TABLE_NAME)
-    .select(`*, brands:brand_id(name)`)
-    .range(from, to);
-
-  if (currentBrandId) q = q.eq("brand_id", currentBrandId);
+  let q = sb.from(TABLE_NAME).select("*").range(from, to);
 
   const term = (lastQuery || "").trim();
   if (term) q = q.ilike(COL.title, `%${term}%`);
@@ -319,7 +228,6 @@ async function fetchProducts({ reset = false } = {}) {
     console.error("Supabase error:", error);
     setStatus(`Error: ${error.message}`);
     if (loadMoreBtn) loadMoreBtn.disabled = false;
-    if (loadMoreMobileBtn) loadMoreMobileBtn.disabled = false;
     loading = false;
     return;
   }
@@ -327,40 +235,35 @@ async function fetchProducts({ reset = false } = {}) {
   if (!data || data.length === 0) {
     setStatus(reset ? "No hay resultados." : "No hay más productos.");
     if (loadMoreBtn) loadMoreBtn.disabled = true;
-    if (loadMoreMobileBtn) loadMoreMobileBtn.disabled = true;
     loading = false;
     return;
   }
 
-  if (grid) grid.insertAdjacentHTML("beforeend", data.map(productCard).join(""));
+  grid.insertAdjacentHTML("beforeend", data.map(productCard).join(""));
   page += 1;
 
   setStatus("");
   if (loadMoreBtn) loadMoreBtn.disabled = false;
-  if (loadMoreMobileBtn) loadMoreMobileBtn.disabled = false;
   loading = false;
 }
 
-// --------------------------
-// App boot (solo 1 vez)
-// --------------------------
-let t = null;
+// --- EVENTS APP ---
+let searchTimer = null;
 function onSearch(value) {
-  clearTimeout(t);
-  t = setTimeout(() => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
     lastQuery = value;
     fetchProducts({ reset: true });
   }, 250);
 }
 
+let appBooted = false;
 function bootApp() {
+  if (appBooted) return;
   appBooted = true;
 
-  // Events búsqueda
   if (searchEl) searchEl.addEventListener("input", () => onSearch(searchEl.value));
-  if (searchMobileEl) searchMobileEl.addEventListener("input", () => onSearch(searchMobileEl.value));
 
-  // Sort
   if (sortEl) {
     sortEl.addEventListener("change", () => {
       lastSort = sortEl.value;
@@ -368,125 +271,18 @@ function bootApp() {
     });
   }
 
-  // Load more
   if (loadMoreBtn) loadMoreBtn.addEventListener("click", () => fetchProducts());
-  if (loadMoreMobileBtn) loadMoreMobileBtn.addEventListener("click", () => fetchProducts());
 
-  // Desktop dropdown
-  if (brandsBtn) {
-    brandsBtn.addEventListener("click", (e) => {
-      e.preventDefault();
-      toggleBrandsMenu();
-    });
-  }
-  if (brandsAllBtn) {
-    brandsAllBtn.addEventListener("click", () => {
-      currentBrandId = null;
-      closeBrandsMenu();
-      fetchProducts({ reset: true });
-    });
-  }
-  document.addEventListener("click", (e) => {
-    if (!brandsMenu || !brandsBtn) return;
-    const inside = brandsMenu.contains(e.target) || brandsBtn.contains(e.target);
-    if (!inside) closeBrandsMenu();
-  });
-
-  // Mobile drawer
-  if (mobileMenuBtn) mobileMenuBtn.addEventListener("click", openMobileDrawer);
-  if (mobileDrawerBackdrop) mobileDrawerBackdrop.addEventListener("click", closeMobileDrawer);
-  if (mobileDrawerClose) mobileDrawerClose.addEventListener("click", closeMobileDrawer);
-  if (mobileBrandsAllBtn) {
-    mobileBrandsAllBtn.addEventListener("click", () => {
-      currentBrandId = null;
-      closeMobileDrawer();
-      fetchProducts({ reset: true });
-    });
-  }
-
-  // ESC
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") {
-      closeBrandsMenu();
-      closeMobileDrawer();
-    }
-  });
-
-  // Data start
-  loadBrands();
   fetchProducts({ reset: true });
 }
 
-// --------------------------
-// Start
-// --------------------------
-checkSessionAndToggleUI();
-sb.auth.onAuthStateChange(() => checkSessionAndToggleUI()); 
-// ============================
-// AUTH / LOGIN
-// ============================
+// --- START ---
+(async () => {
+  const hasSession = await checkSession();
+  if (hasSession) bootApp();
 
-const loginForm = document.getElementById("loginForm");
-const loginBox = document.getElementById("loginBox");
-const mainContent = document.getElementById("mainContent");
-const loginError = document.getElementById("loginError");
-
-// Si existe el formulario, activamos el login
-if (loginForm) {
-  loginForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
-
-    const { data, error } = await sb.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      if (loginError) loginError.textContent = "Credenciales incorrectas";
-      return;
-    }
-
-    // Login OK
-    if (loginBox) loginBox.style.display = "none";
-    if (mainContent) mainContent.style.display = "block";
-
-    loadUserRole();
+  sb.auth.onAuthStateChange(async () => {
+    const ok = await checkSession();
+    if (ok) bootApp();
   });
-}
-
-// Detectar sesión ya iniciada
-async function checkSession() {
-  const { data } = await sb.auth.getSession();
-
-  if (data.session) {
-    if (loginBox) loginBox.style.display = "none";
-    if (mainContent) mainContent.style.display = "block";
-    loadUserRole();
-  }
-}
-
-// Cargar rol desde profiles
-async function loadUserRole() {
-  const { data: userData } = await sb.auth.getUser();
-  const userId = userData.user.id;
-
-  const { data: profile } = await sb
-    .from("profiles")
-    .select("role")
-    .eq("user_id", userId)
-    .single();
-
-  if (!profile) return;
-
-  const isAdmin = profile.role === "admin";
-
-  // Mostrar botón "Ver producto" solo si es admin
-  window.IS_ADMIN = isAdmin;
-}
-
-// Ejecutar al cargar
-checkSession();
-
+})();
