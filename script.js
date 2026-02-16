@@ -1,6 +1,5 @@
 // ==========================
-// SAPI WATCHES - SCRIPT COMPLETO
-// Login + Role (profiles) + Catálogo + Marcas
+// SAPI WATCHES - SCRIPT COMPLETO CORREGIDO
 // ==========================
 
 // CONFIG
@@ -8,13 +7,14 @@ const SUPABASE_URL = "https://gwprzkuuxhnixovmniaj.supabase.co";
 const SUPABASE_KEY = "sb_publishable_pd2KxCYegn_GRt5VCvjbnw_fBSIIu8r";
 const TABLE_NAME = "base_productos";
 const BRANDS_TABLE = "brands";
+const TABLE_PROFILES = "profiles";
 
 const COL = {
   title: "Titulo",
   image: "Imagen",
   price: "Precio",
   url: "Titulo_URL",
-  brand: "Marca", // Asumiendo que tienes esta columna
+  brand: "Marca",
 };
 
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -60,6 +60,7 @@ const brandsStripNext = document.getElementById("brandsStripNext");
 
 // Estado
 let isAdmin = false;
+let currentUser = null;
 let page = 0;
 const FIRST_LOAD = 10;
 const PAGE_SIZE = 24;
@@ -231,6 +232,8 @@ async function fetchBrands() {
 
     if (error) {
       console.error("Error cargando marcas:", error);
+      // Si no existe la tabla brands, continuar sin error
+      allBrands = [];
       return;
     }
 
@@ -240,6 +243,7 @@ async function fetchBrands() {
     renderBrandsStrip();
   } catch (err) {
     console.error("Error fetching brands:", err);
+    allBrands = [];
   }
 }
 
@@ -424,38 +428,44 @@ if (brandsStripNext) {
 }
 
 // --------------------------
-// Role (profiles)
+// Role (profiles) - CORREGIDO
 // --------------------------
 async function loadRole(userId) {
   isAdmin = false;
 
   if (!userId) {
-    console.warn("⚠️ No se proporcionó userId");
+    console.warn("⚠️ No se proporcionó userId para verificar rol");
     return;
   }
 
   try {
+    console.log("🔍 Buscando rol para user_id:", userId);
+    
     const { data, error } = await sb
-      .from("profiles")
+      .from(TABLE_PROFILES)
       .select("role")
-      .eq("user_id", userId)
+      .eq("user_id", userId)  // ✅ CAMBIADO: usar "user_id" en lugar de "id"
       .maybeSingle();
 
     if (error) {
       console.error("❌ Error al consultar profiles:", error.message);
+      console.info("ℹ️ Usuario sin perfil definido. Rol por defecto: client");
       return;
     }
 
     if (!data) {
-      console.info("ℹ️ No se encontró perfil para este usuario. Rol por defecto: cliente");
+      console.info("ℹ️ No existe registro en profiles para este usuario. Rol por defecto: client");
       return;
     }
 
-    if (data.role === "admin") {
+    const role = (data.role || "").toLowerCase().trim();
+    console.log("📋 Rol encontrado:", role);
+
+    if (role === "admin") {
       isAdmin = true;
-      console.log("✅ Usuario admin detectado");
+      console.log("✅ Usuario identificado como ADMIN");
     } else {
-      console.log("ℹ️ Usuario rol:", data.role);
+      console.log("ℹ️ Usuario identificado como CLIENT");
     }
   } catch (err) {
     console.error("❌ Excepción en loadRole:", err);
@@ -470,7 +480,7 @@ async function boot() {
     const { data, error } = await sb.auth.getSession();
     
     if (error) {
-      console.warn("getSession error:", error.message);
+      console.warn("❌ getSession error:", error.message);
       setView(false);
       return;
     }
@@ -478,18 +488,21 @@ async function boot() {
     const session = data?.session;
 
     if (!session) {
+      console.log("ℹ️ No hay sesión activa");
       setView(false);
       return;
     }
 
-    console.log("🔑 User ID:", session.user.id);
+    currentUser = session.user;
+    console.log("🔑 Sesión activa - User ID:", currentUser.id);
+    console.log("📧 Email:", currentUser.email);
     
     setView(true);
-    await loadRole(session.user.id);
+    await loadRole(currentUser.id);
     await fetchBrands();
     fetchProducts({ reset: true });
   } catch (err) {
-    console.error("Error en boot:", err);
+    console.error("❌ Error en boot:", err);
     setView(false);
   }
 }
@@ -513,16 +526,21 @@ if (loginForm) {
     if (loginBtn) loginBtn.disabled = true;
 
     try {
-      const { error } = await sb.auth.signInWithPassword({ email, password });
+      console.log("🔐 Intentando login para:", email);
+      
+      const { data, error } = await sb.auth.signInWithPassword({ email, password });
 
       if (error) {
-        console.warn("login error:", error.message);
+        console.warn("❌ Login error:", error.message);
         showLoginMsg("Credenciales incorrectas o usuario no existe.");
         if (loginBtn) loginBtn.disabled = false;
         return;
       }
+
+      console.log("✅ Login exitoso");
+      // El onAuthStateChange manejará el resto
     } catch (err) {
-      console.error("Error en login:", err);
+      console.error("❌ Error en login:", err);
       showLoginMsg("Error de conexión.");
       if (loginBtn) loginBtn.disabled = false;
     }
@@ -535,9 +553,11 @@ if (loginForm) {
 if (logoutBtn) {
   logoutBtn.addEventListener("click", async () => {
     try {
+      console.log("👋 Cerrando sesión...");
       await sb.auth.signOut();
+      console.log("✅ Sesión cerrada");
     } catch (err) {
-      console.error("Error en logout:", err);
+      console.error("❌ Error en logout:", err);
     }
   });
 }
@@ -580,10 +600,14 @@ if (loadMoreMobile) {
 // --------------------------
 // Auth State Change
 // --------------------------
-sb.auth.onAuthStateChange(async (_event, session) => {
+sb.auth.onAuthStateChange(async (event, session) => {
   try {
+    console.log("🔄 Auth state changed:", event);
+    
     if (!session) {
+      console.log("ℹ️ Sesión cerrada - limpiando estado");
       isAdmin = false;
+      currentUser = null;
       selectedBrand = null;
       allBrands = [];
       if (grid) grid.innerHTML = "";
@@ -593,16 +617,19 @@ sb.auth.onAuthStateChange(async (_event, session) => {
       return;
     }
 
-    console.log("🔑 Auth state changed - User ID:", session.user.id);
+    currentUser = session.user;
+    console.log("🔑 Sesión actualizada - User ID:", currentUser.id);
+    console.log("📧 Email:", currentUser.email);
     
     setView(true);
-    await loadRole(session.user.id);
+    await loadRole(currentUser.id);
     await fetchBrands();
     fetchProducts({ reset: true });
   } catch (err) {
-    console.error("Error en auth state:", err);
+    console.error("❌ Error en auth state change:", err);
   }
 });
 
-// Iniciar
+// Iniciar aplicación
+console.log("🚀 Iniciando Sapi Watches...");
 boot();
