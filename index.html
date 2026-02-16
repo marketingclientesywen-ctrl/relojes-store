@@ -18,7 +18,7 @@
 </head>
 
 <body>
-  <!-- TOPBAR (solo cuando estÃ¡s logueado) -->
+  <!-- TOPBAR (solo cuando estás logueado) -->
   <header class="topbar hidden" id="topbar">
     <div class="topbar__inner">
       <div class="brand">
@@ -27,7 +27,7 @@
       </div>
 
       <nav class="nav">
-        <a href="#catalogo">CatÃ¡logo</a>
+        <a href="#catalogo">Catálogo</a>
       </nav>
 
       <div class="top-actions">
@@ -42,7 +42,7 @@
       <div class="auth__card">
         <div class="auth__kicker">Acceso</div>
         <h1 class="auth__title">SW <span class="accent">|</span> Sapi Watches</h1>
-        <p class="auth__subtitle">Inicia sesiÃ³n para continuar.</p>
+        <p class="auth__subtitle">Inicia sesión para continuar.</p>
 
         <div id="loginMsg" class="alert hidden"></div>
 
@@ -53,8 +53,8 @@
           </label>
 
           <label class="field">
-            <span>ContraseÃ±a</span>
-            <input id="password" type="password" autocomplete="current-password" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" required />
+            <span>Contraseña</span>
+            <input id="password" type="password" autocomplete="current-password" placeholder="••••••••" required />
           </label>
 
           <button id="loginBtn" class="btn btn-primary" type="submit">Entrar</button>
@@ -71,21 +71,21 @@
       <section class="hero" id="catalogo">
         <div class="hero__inner">
           <div>
-            <h2 class="hero__title">CatÃ¡logo Curado</h2>
-            <p class="hero__lead">La simplicidad es la mÃ¡xima sofisticaciÃ³n.</p>
+            <h2 class="hero__title">Catálogo Curado</h2>
+            <p class="hero__lead">La simplicidad es la máxima sofisticación.</p>
 
             <div class="hero__meta">
               <div class="meta">
                 <div class="meta__k">Estado</div>
-                <div class="meta__v" id="sessionState">â€”</div>
+                <div class="meta__v" id="sessionState">—</div>
               </div>
               <div class="meta">
                 <div class="meta__k">Rol</div>
-                <div class="meta__v" id="roleState">â€”</div>
+                <div class="meta__v" id="roleState">—</div>
               </div>
               <div class="meta">
                 <div class="meta__k">Resultados</div>
-                <div class="meta__v" id="countState">â€”</div>
+                <div class="meta__v" id="countState">—</div>
               </div>
             </div>
 
@@ -94,17 +94,17 @@
 
           <div class="toolbox">
             <div class="toolbox__row">
-              <input id="search" type="search" placeholder="Buscar por tÃ­tuloâ€¦" />
+              <input id="search" type="search" placeholder="Buscar por título…" />
               <select id="sort">
-                <option value="name_asc">Aâ€“Z</option>
+                <option value="name_asc">A–Z</option>
               </select>
-              <button id="loadMore" class="btn btn-primary" type="button">Cargar mÃ¡s</button>
+              <button id="loadMore" class="btn btn-primary" type="button">Cargar más</button>
             </div>
 
             <div class="hero__card">
               <div class="hero__cardTitle">Notas</div>
               <div class="hero__cardText">
-                Si algo falla, abre la consola (F12) y verÃ¡s logs claros.
+                Si algo falla, abre la consola (F12) y verás logs claros.
               </div>
               <div class="hero__cardHint">
                 Recomendado: servir esto por HTTPS (GitHub Pages / Cloudflare / tu hosting).
@@ -126,14 +126,13 @@
 
         <div class="footer">
           <div class="footer__inner">
-            <div><span class="footer__brand">SW</span> Â· Sapi Watches</div>
-            <div id="footerHint">â€”</div>
+            <div><span class="footer__brand">SW</span> · Sapi Watches</div>
+            <div id="footerHint">—</div>
           </div>
         </div>
       </section>
     </section>
   </main>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="./script.js?v=1"></script>
 
 </body>
