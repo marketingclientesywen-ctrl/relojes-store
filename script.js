@@ -1,6 +1,6 @@
 // ==========================
 // SAPI WATCHES - SCRIPT ROBUSTO
-// Login Supabase + Roles + Catálogo
+// Login Supabase + Roles + CatÃ¡logo
 // ==========================
 
 // -------- CONFIG (TU PROYECTO) --------
@@ -17,7 +17,7 @@ const COL = {
   url: "Titulo_URL",
 };
 
-// Paginación
+// PaginaciÃ³n
 const FIRST_LOAD = 10;
 const PAGE_SIZE = 24;
 
@@ -86,7 +86,7 @@ function showLoginMsg(msg = "") {
 }
 
 function setView(isLoggedIn) {
-  // Super literal: esto evita “cosas raras”
+  // Super literal: esto evita â€œcosas rarasâ€
   if (loginScreen) loginScreen.classList.toggle("hidden", isLoggedIn);
   if (appContent) appContent.classList.toggle("hidden", !isLoggedIn);
   if (topbar) topbar.classList.toggle("hidden", !isLoggedIn);
@@ -110,10 +110,10 @@ function applySort(q, sortValue) {
 }
 
 function setMeta({ session, role, count } = {}) {
-  if (sessionState) sessionState.textContent = session ?? "—";
-  if (roleState) roleState.textContent = role ?? "—";
-  if (countState) countState.textContent = typeof count === "number" ? String(count) : "—";
-  if (footerHint) footerHint.textContent = session ? "Sesión activa" : "Sesión no activa";
+  if (sessionState) sessionState.textContent = session ?? "â€”";
+  if (roleState) roleState.textContent = role ?? "â€”";
+  if (countState) countState.textContent = typeof count === "number" ? String(count) : "â€”";
+  if (footerHint) footerHint.textContent = session ? "SesiÃ³n activa" : "SesiÃ³n no activa";
 }
 
 // -------- ROLE (profiles) --------
@@ -145,7 +145,7 @@ async function loadRole(userId) {
 
 // -------- CARD --------
 function productCard(p) {
-  const title = escapeHtml(p?.[COL.title] ?? "Sin título");
+  const title = escapeHtml(p?.[COL.title] ?? "Sin tÃ­tulo");
   const img = p?.[COL.image] ? escapeHtml(p[COL.image]) : "";
   const url = p?.[COL.url] ? escapeHtml(p[COL.url]) : "";
   const price = escapeHtml(p?.[COL.price] ?? "");
@@ -162,10 +162,10 @@ function productCard(p) {
       </div>
       <div class="card__body">
         <h3 class="card__title">${title}</h3>
-        ${price ? `<div class="card__price">${price}</div>` : `<div class="card__price">—</div>`}
+        ${price ? `<div class="card__price">${price}</div>` : `<div class="card__price">â€”</div>`}
         ${
           isAdmin && url
-            ? `<a class="card__link" href="${url}" target="_blank" rel="noopener">Ver producto →</a>`
+            ? `<a class="card__link" href="${url}" target="_blank" rel="noopener">Ver producto â†’</a>`
             : `<span class="card__link" style="opacity:.55; pointer-events:none;">Solo admin</span>`
         }
       </div>
@@ -185,7 +185,7 @@ async function fetchProducts({ reset = false } = {}) {
     if (loadMoreBtn) loadMoreBtn.disabled = false;
   }
 
-  setStatus("Cargando…");
+  setStatus("Cargandoâ€¦");
   if (loadMoreBtn) loadMoreBtn.disabled = true;
 
   const size = page === 0 ? FIRST_LOAD : PAGE_SIZE;
@@ -211,7 +211,7 @@ async function fetchProducts({ reset = false } = {}) {
     }
 
     if (!data || data.length === 0) {
-      setStatus(reset ? "No hay resultados." : "No hay más productos.");
+      setStatus(reset ? "No hay resultados." : "No hay mÃ¡s productos.");
       if (loadMoreBtn) loadMoreBtn.disabled = true;
       setMeta({ count: lastCount });
       loading = false;
@@ -238,24 +238,24 @@ async function fetchProducts({ reset = false } = {}) {
 
 // -------- BOOT --------
 async function boot() {
-  log("boot…");
+  log("bootâ€¦");
 
-  // 1) comprobar sesión
+  // 1) comprobar sesiÃ³n
   const { data, error } = await sb.auth.getSession();
   if (error) warn("getSession error:", error.message);
 
   const session = data?.session;
 
   if (!session) {
-    log("Sin sesión → mostrar login");
+    log("Sin sesiÃ³n â†’ mostrar login");
     setView(false);
-    setMeta({ session: "no", role: "—", count: 0 });
+    setMeta({ session: "no", role: "â€”", count: 0 });
     return;
   }
 
-  log("Con sesión → entrar app");
+  log("Con sesiÃ³n â†’ entrar app");
   setView(true);
-  setMeta({ session: "sí" });
+  setMeta({ session: "sÃ­" });
 
   await loadRole(session.user.id);
   await fetchProducts({ reset: true });
@@ -272,7 +272,7 @@ if (loginForm) {
     const password = (passEl?.value || "").trim();
 
     if (!email || !password) {
-      showLoginMsg("Rellena email y contraseña.");
+      showLoginMsg("Rellena email y contraseÃ±a.");
       return;
     }
 
@@ -288,7 +288,7 @@ if (loginForm) {
       return;
     }
 
-    // NO hacemos setView aquí: lo hace onAuthStateChange (más fiable)
+    // NO hacemos setView aquÃ­: lo hace onAuthStateChange (mÃ¡s fiable)
   });
 }
 
@@ -320,7 +320,7 @@ if (sortEl) {
 
 if (loadMoreBtn) loadMoreBtn.addEventListener("click", () => fetchProducts());
 
-// Sesión reactiva (esto evita “cosas raras”)
+// SesiÃ³n reactiva (esto evita â€œcosas rarasâ€)
 sb.auth.onAuthStateChange(async (event, session) => {
   log("onAuthStateChange:", event, !!session);
 
@@ -330,12 +330,12 @@ sb.auth.onAuthStateChange(async (event, session) => {
     setStatus("");
     showLoginMsg("");
     setView(false);
-    setMeta({ session: "no", role: "—", count: 0 });
+    setMeta({ session: "no", role: "â€”", count: 0 });
     return;
   }
 
   setView(true);
-  setMeta({ session: "sí" });
+  setMeta({ session: "sÃ­" });
   await loadRole(session.user.id);
   await fetchProducts({ reset: true });
 });
