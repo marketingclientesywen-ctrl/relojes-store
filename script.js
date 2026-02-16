@@ -33,15 +33,7 @@ if (!window.supabase) {
   throw new Error("Supabase not found");
 }
 
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-    storage: window.localStorage
-  }
-});
-
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // -------- UI --------
 const $ = (id) => document.getElementById(id);
@@ -120,4 +112,233 @@ function applySort(q, sortValue) {
 function setMeta({ session, role, count } = {}) {
   if (sessionState) sessionState.textContent = session ?? "—";
   if (roleState) roleState.textContent = role ?? "—";
-  if (countState) cou
+  if (countState) countState.textContent = typeof count === "number" ? String(count) : "—";
+  if (footerHint) footerHint.textContent = session ? "Sesión activa" : "Sesión no activa";
+}
+
+// -------- ROLE (profiles) --------
+// Si no hay tabla profiles o no hay registro, no rompe: queda como "cliente".
+async function loadRole(userId) {
+  isAdmin = false;
+  setMeta({ role: "cliente" });
+
+  try {
+    const { data, error } = await sb
+      .from("profiles")
+      .select("role")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (error) {
+      warn("profiles role error:", error.message);
+      return;
+    }
+
+    if (data?.role === "admin") {
+      isAdmin = true;
+      setMeta({ role: "admin" });
+    }
+  } catch (e) {
+    warn("loadRole exception:", e);
+  }
+}
+
+// -------- CARD --------
+function productCard(p) {
+  const title = escapeHtml(p?.[COL.title] ?? "Sin título");
+  const img = p?.[COL.image] ? escapeHtml(p[COL.image]) : "";
+  const url = p?.[COL.url] ? escapeHtml(p[COL.url]) : "";
+  const price = escapeHtml(p?.[COL.price] ?? "");
+
+  return `
+    <article class="card">
+      <div class="card__img">
+        ${
+          img
+            ? `<img src="${img}" alt="${title}" loading="lazy"
+                 onerror="this.remove(); this.parentElement.innerHTML='<div class=&quot;img__placeholder&quot;>Imagen no disponible</div>';" />`
+            : `<div class="img__placeholder">Sin imagen</div>`
+        }
+      </div>
+      <div class="card__body">
+        <h3 class="card__title">${title}</h3>
+        ${price ? `<div class="card__price">${price}</div>` : `<div class="card__price">—</div>`}
+        ${
+          isAdmin && url
+            ? `<a class="card__link" href="${url}" target="_blank" rel="noopener">Ver producto →</a>`
+            : `<span class="card__link" style="opacity:.55; pointer-events:none;">Solo admin</span>`
+        }
+      </div>
+    </article>
+  `;
+}
+
+// -------- FETCH PRODUCTOS --------
+async function fetchProducts({ reset = false } = {}) {
+  if (loading) return;
+  loading = true;
+
+  if (reset) {
+    page = 0;
+    lastCount = 0;
+    if (grid) grid.innerHTML = "";
+    if (loadMoreBtn) loadMoreBtn.disabled = false;
+  }
+
+  setStatus("Cargando…");
+  if (loadMoreBtn) loadMoreBtn.disabled = true;
+
+  const size = page === 0 ? FIRST_LOAD : PAGE_SIZE;
+  const from = page === 0 ? 0 : FIRST_LOAD + (page - 1) * PAGE_SIZE;
+  const to = from + size - 1;
+
+  try {
+    let q = sb.from(TABLE_NAME).select("*").range(from, to);
+
+    const term = (lastQuery || "").trim();
+    if (term) q = q.ilike(COL.title, `%${term}%`);
+
+    q = applySort(q, lastSort);
+
+    const { data, error } = await q;
+
+    if (error) {
+      console.error("Supabase error:", error);
+      setStatus("Error cargando productos.");
+      if (loadMoreBtn) loadMoreBtn.disabled = false;
+      loading = false;
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      setStatus(reset ? "No hay resultados." : "No hay más productos.");
+      if (loadMoreBtn) loadMoreBtn.disabled = true;
+      setMeta({ count: lastCount });
+      loading = false;
+      return;
+    }
+
+    lastCount += data.length;
+    setMeta({ count: lastCount });
+
+    if (grid) grid.insertAdjacentHTML("beforeend", data.map(productCard).join(""));
+    page += 1;
+
+    setStatus("");
+    if (loadMoreBtn) loadMoreBtn.disabled = false;
+    loading = false;
+
+  } catch (e) {
+    console.error("fetchProducts exception:", e);
+    setStatus("Error inesperado cargando productos.");
+    if (loadMoreBtn) loadMoreBtn.disabled = false;
+    loading = false;
+  }
+}
+
+// -------- BOOT --------
+async function boot() {
+  log("boot…");
+
+  // 1) comprobar sesión
+  const { data, error } = await sb.auth.getSession();
+  if (error) warn("getSession error:", error.message);
+
+  const session = data?.session;
+
+  if (!session) {
+    log("Sin sesión → mostrar login");
+    setView(false);
+    setMeta({ session: "no", role: "—", count: 0 });
+    return;
+  }
+
+  log("Con sesión → entrar app");
+  setView(true);
+  setMeta({ session: "sí" });
+
+  await loadRole(session.user.id);
+  await fetchProducts({ reset: true });
+}
+
+// -------- EVENTS --------
+// Login
+if (loginForm) {
+  loginForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    showLoginMsg("");
+
+    const email = (emailEl?.value || "").trim();
+    const password = (passEl?.value || "").trim();
+
+    if (!email || !password) {
+      showLoginMsg("Rellena email y contraseña.");
+      return;
+    }
+
+    if (loginBtn) loginBtn.disabled = true;
+
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+
+    if (loginBtn) loginBtn.disabled = false;
+
+    if (error) {
+      warn("login error:", error.message);
+      showLoginMsg("Credenciales incorrectas o usuario no existe.");
+      return;
+    }
+
+    // NO hacemos setView aquí: lo hace onAuthStateChange (más fiable)
+  });
+}
+
+// Logout
+if (logoutBtn) {
+  logoutBtn.addEventListener("click", async () => {
+    await sb.auth.signOut();
+  });
+}
+
+// Search / Sort / Load more
+let t = null;
+function onSearch(v) {
+  clearTimeout(t);
+  t = setTimeout(() => {
+    lastQuery = v;
+    fetchProducts({ reset: true });
+  }, 250);
+}
+
+if (searchEl) searchEl.addEventListener("input", () => onSearch(searchEl.value));
+
+if (sortEl) {
+  sortEl.addEventListener("change", () => {
+    lastSort = sortEl.value;
+    fetchProducts({ reset: true });
+  });
+}
+
+if (loadMoreBtn) loadMoreBtn.addEventListener("click", () => fetchProducts());
+
+// Sesión reactiva (esto evita “cosas raras”)
+sb.auth.onAuthStateChange(async (event, session) => {
+  log("onAuthStateChange:", event, !!session);
+
+  if (!session) {
+    isAdmin = false;
+    if (grid) grid.innerHTML = "";
+    setStatus("");
+    showLoginMsg("");
+    setView(false);
+    setMeta({ session: "no", role: "—", count: 0 });
+    return;
+  }
+
+  setView(true);
+  setMeta({ session: "sí" });
+  await loadRole(session.user.id);
+  await fetchProducts({ reset: true });
+});
+
+// START
+boot();
