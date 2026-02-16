@@ -1,113 +1,92 @@
 // ==========================
-// Sapi Watches - Login + Catalog + Brands
+// SAPI WATCHES - SCRIPT COMPLETO
+// Login + Role (profiles) + Catálogo + Marcas
 // ==========================
 
-// -------- CONFIG --------
+// CONFIG
 const SUPABASE_URL = "https://gwprzkuuxhnixovmniaj.supabase.co";
 const SUPABASE_KEY = "sb_publishable_pd2KxCYegn_GRt5VCvjbnw_fBSIIu8r";
-
-const TABLE_PRODUCTS = "base_productos";
-const TABLE_BRANDS = "brands";
-const TABLE_PROFILES = "profiles"; // crea esta tabla (id uuid, role text)
+const TABLE_NAME = "base_productos";
+const BRANDS_TABLE = "brands";
 
 const COL = {
   title: "Titulo",
   image: "Imagen",
   price: "Precio",
   url: "Titulo_URL",
+  brand: "Marca", // Asumiendo que tienes esta columna
 };
 
-// Brands columns
-const BRAND = {
-  id: "id",
-  name: "name",
-  logo: "logo_url",
-};
-
-// Paging
-let page = 0;
-const FIRST_LOAD = 10;      // 👈 inicio solo 10
-const PAGE_SIZE = 24;       // luego cargar más
-let loading = false;
-
-// Filters
-let lastQuery = "";
-let lastSort = "name_asc";
-let currentBrandId = null; // null = todas
-
-// Auth / role
-let isAdmin = false;
-
-// -------- SUPABASE --------
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// -------- UI --------
+// UI Elements - Login
 const loginScreen = document.getElementById("loginScreen");
 const appContent = document.getElementById("appContent");
-
 const loginForm = document.getElementById("loginForm");
 const loginMsg = document.getElementById("loginMsg");
+const emailEl = document.getElementById("email");
+const passEl = document.getElementById("password");
 const loginBtn = document.getElementById("loginBtn");
-const logoutBtn = document.getElementById("logoutBtn");
 
+// UI Elements - App
+const logoutBtn = document.getElementById("logoutBtn");
 const grid = document.getElementById("grid");
 const statusEl = document.getElementById("status");
-
 const searchEl = document.getElementById("search");
-const searchMobileEl = document.getElementById("searchMobile");
+const searchMobile = document.getElementById("searchMobile");
 const sortEl = document.getElementById("sort");
-
 const loadMoreBtn = document.getElementById("loadMore");
-const loadMoreMobileBtn = document.getElementById("loadMoreMobile");
+const loadMoreMobile = document.getElementById("loadMoreMobile");
 
-// Desktop brands dropdown
+// UI Elements - Brands Desktop
 const brandsBtn = document.getElementById("brandsBtn");
 const brandsMenu = document.getElementById("brandsMenu");
 const brandsGrid = document.getElementById("brandsGrid");
-const brandsAllBtn = document.getElementById("brandsAll");
+const brandsAll = document.getElementById("brandsAll");
 
-// Mobile drawer
+// UI Elements - Brands Mobile
 const mobileMenuBtn = document.getElementById("mobileMenuBtn");
 const mobileDrawer = document.getElementById("mobileDrawer");
 const mobileDrawerBackdrop = document.getElementById("mobileDrawerBackdrop");
 const mobileDrawerClose = document.getElementById("mobileDrawerClose");
 const mobileBrandsGrid = document.getElementById("mobileBrandsGrid");
-const mobileBrandsAllBtn = document.getElementById("mobileBrandsAll");
+const mobileBrandsAll = document.getElementById("mobileBrandsAll");
 const mobileBrandStatus = document.getElementById("mobileBrandStatus");
 
-// Brands strip
+// UI Elements - Brands Strip
 const brandsStrip = document.getElementById("brandsStrip");
 const brandsStripPrev = document.getElementById("brandsStripPrev");
 const brandsStripNext = document.getElementById("brandsStripNext");
-let allBrands = [];
-let brandStripIndex = 0; // 0,3,6,...
 
-// -------- Helpers --------
+// Estado
+let isAdmin = false;
+let page = 0;
+const FIRST_LOAD = 10;
+const PAGE_SIZE = 24;
+let loading = false;
+let lastQuery = "";
+let lastSort = "name_asc";
+let selectedBrand = null;
+let allBrands = [];
+let stripIndex = 0;
+const STRIP_SIZE = 3;
+
+// --------------------------
+// Helpers
+// --------------------------
 function setStatus(msg = "") {
   if (statusEl) statusEl.textContent = msg;
 }
 
-function showLogin(msg = "") {
-  if (appContent) appContent.classList.add("hidden");
-  if (loginScreen) loginScreen.classList.remove("hidden");
-  if (msg) showLoginMsg(msg);
-}
-
-function showApp() {
-  if (loginScreen) loginScreen.classList.add("hidden");
-  if (appContent) appContent.classList.remove("hidden");
-}
-
-function showLoginMsg(msg) {
+function showLoginMsg(msg = "") {
   if (!loginMsg) return;
-  loginMsg.textContent = msg;
+  if (!msg) {
+    loginMsg.classList.add("hidden");
+    loginMsg.textContent = "";
+    return;
+  }
   loginMsg.classList.remove("hidden");
-}
-
-function hideLoginMsg() {
-  if (!loginMsg) return;
-  loginMsg.textContent = "";
-  loginMsg.classList.add("hidden");
+  loginMsg.textContent = msg;
 }
 
 function escapeHtml(str) {
@@ -119,233 +98,6 @@ function escapeHtml(str) {
     .replaceAll("'", "&#039;");
 }
 
-function normalizePriceToEuroPlus5(rawPrice) {
-  const raw = String(rawPrice ?? "").trim();
-  if (!raw) return "";
-
-  if (/prices on login/i.test(raw)) return "Precio bajo consulta";
-
-  // Busca un número tipo 138 o 138.50
-  const m = raw.match(/(\d+(?:[.,]\d+)?)/);
-  if (!m) return raw;
-
-  let n = Number(m[1].replace(",", "."));
-  if (!Number.isFinite(n)) return raw;
-
-  // Si detecta $ o USD -> +5 y €
-  if (/\$|usd/i.test(raw)) {
-    n = n + 5;
-    const out = n % 1 === 0 ? String(n.toFixed(0)) : String(n.toFixed(2));
-    return `${out} €`;
-  }
-
-  // Si ya viene en € lo deja
-  if (/€|eur/i.test(raw)) return raw;
-
-  // Si no sabe la moneda, lo deja tal cual
-  return raw;
-}
-
-// -------- Auth role --------
-// profiles: id(uuid) = auth.user.id, role(text) = 'admin' o 'client'
-async function loadRoleForUser(user) {
-  isAdmin = false;
-  if (!user) return;
-
-  const { data, error } = await sb
-    .from(TABLE_PROFILES)
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (error) {
-    // si no existe tabla o no hay fila, se queda como client
-    console.warn("Role lookup:", error.message);
-    isAdmin = false;
-    return;
-  }
-
-  const role = (data?.role || "").toLowerCase().trim();
-  isAdmin = role === "admin";
-}
-
-// -------- Brands UI --------
-function closeBrandsMenu() {
-  if (!brandsMenu) return;
-  brandsMenu.classList.add("hidden");
-}
-function toggleBrandsMenu() {
-  if (!brandsMenu) return;
-  brandsMenu.classList.toggle("hidden");
-}
-
-function openMobileDrawer() {
-  if (!mobileDrawer) return;
-  mobileDrawer.classList.remove("hidden");
-  document.body.style.overflow = "hidden";
-}
-function closeMobileDrawer() {
-  if (!mobileDrawer) return;
-  mobileDrawer.classList.add("hidden");
-  document.body.style.overflow = "";
-}
-
-function brandFallback(name) {
-  const parts = String(name || "B").trim().split(/\s+/);
-  const a = (parts[0]?.[0] || "B").toUpperCase();
-  const b = (parts[1]?.[0] || "").toUpperCase();
-  return (a + b).slice(0, 2);
-}
-
-function brandCard(b) {
-  const name = escapeHtml(b?.[BRAND.name] ?? "Marca");
-  const logo = b?.[BRAND.logo] ? escapeHtml(b[BRAND.logo]) : "";
-  const id = b?.[BRAND.id];
-  const fb = brandFallback(name);
-
-  return `
-    <button
-      class="group text-left flex items-center gap-3 p-3 border border-white/10 hover:border-primary/60 hover:bg-white/5 transition"
-      data-brand-id="${id}"
-      type="button"
-      title="${name}"
-    >
-      <div class="w-10 h-10 bg-white/5 border border-white/10 grid place-items-center overflow-hidden">
-        ${
-          logo
-            ? `<img src="${logo}" alt="${name}" class="w-full h-full object-contain p-2 opacity-90 group-hover:opacity-100"
-                 loading="lazy"
-                 onerror="this.remove(); this.parentElement.innerHTML='<span class=&quot;text-xs font-bold text-slate-300&quot;'>${fb}</span>';">`
-            : `<span class="text-xs font-bold text-slate-300">${fb}</span>`
-        }
-      </div>
-      <div class="min-w-0">
-        <div class="text-sm font-semibold tracking-tight group-hover:text-primary transition-colors truncate">${name}</div>
-        <div class="text-[10px] uppercase tracking-[0.25em] text-slate-500">Ver relojes</div>
-      </div>
-    </button>
-  `;
-}
-
-function bindBrandClicks(container, onPick) {
-  if (!container) return;
-  container.querySelectorAll("[data-brand-id]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const id = btn.getAttribute("data-brand-id");
-      onPick(id ? Number(id) : null);
-    });
-  });
-}
-
-function renderBrandsStrip() {
-  if (!brandsStrip) return;
-
-  if (!allBrands.length) {
-    brandsStrip.innerHTML = `<div class="text-slate-500 text-xs">No hay marcas.</div>`;
-    if (brandsStripPrev) brandsStripPrev.disabled = true;
-    if (brandsStripNext) brandsStripNext.disabled = true;
-    return;
-  }
-
-  const slice = allBrands.slice(brandStripIndex, brandStripIndex + 3);
-  brandsStrip.innerHTML = slice.map(brandCard).join("");
-
-  bindBrandClicks(brandsStrip, (id) => {
-    currentBrandId = id;
-    fetchProducts({ reset: true });
-    // baja al catálogo para que “se note”
-    document.getElementById("coleccion")?.scrollIntoView({ behavior: "smooth", block: "start" });
-  });
-
-  if (brandsStripPrev) brandsStripPrev.disabled = brandStripIndex <= 0;
-  if (brandsStripNext) brandsStripNext.disabled = brandStripIndex + 3 >= allBrands.length;
-}
-
-async function loadBrands() {
-  // placeholders
-  if (brandsGrid) brandsGrid.innerHTML = `<div class="text-slate-500 text-xs">Cargando marcas…</div>`;
-  if (mobileBrandsGrid) mobileBrandsGrid.innerHTML = `<div class="text-slate-500 text-xs">Cargando marcas…</div>`;
-  if (brandsStrip) brandsStrip.innerHTML = `<div class="text-slate-500 text-xs">Cargando marcas…</div>`;
-
-  const { data, error } = await sb
-    .from(TABLE_BRANDS)
-    .select(`${BRAND.id}, ${BRAND.name}, ${BRAND.logo}`)
-    .order(BRAND.name, { ascending: true });
-
-  if (error) {
-    console.error("Brands error:", error);
-    if (brandsGrid) brandsGrid.innerHTML = `<div class="text-slate-500 text-xs">Error cargando marcas.</div>`;
-    if (mobileBrandsGrid) mobileBrandsGrid.innerHTML = `<div class="text-slate-500 text-xs">Error cargando marcas.</div>`;
-    if (brandsStrip) brandsStrip.innerHTML = `<div class="text-slate-500 text-xs">Error cargando marcas.</div>`;
-    return;
-  }
-
-  allBrands = data || [];
-  brandStripIndex = 0;
-
-  const html = allBrands.map(brandCard).join("");
-
-  if (brandsGrid) brandsGrid.innerHTML = html;
-  if (mobileBrandsGrid) mobileBrandsGrid.innerHTML = html;
-
-  bindBrandClicks(brandsGrid, (id) => {
-    currentBrandId = id;
-    closeBrandsMenu();
-    fetchProducts({ reset: true });
-  });
-
-  bindBrandClicks(mobileBrandsGrid, (id) => {
-    currentBrandId = id;
-    closeMobileDrawer();
-    fetchProducts({ reset: true });
-  });
-
-  if (mobileBrandStatus) mobileBrandStatus.textContent = `${allBrands.length} marcas`;
-
-  renderBrandsStrip();
-}
-
-// -------- Products --------
-function productCard(p) {
-  const title = escapeHtml(p?.[COL.title] ?? "Sin título");
-  const img = p?.[COL.image] ? escapeHtml(p[COL.image]) : "";
-  const url = p?.[COL.url] ? escapeHtml(p[COL.url]) : "";
-  const priceText = escapeHtml(normalizePriceToEuroPlus5(p?.[COL.price]));
-  const brandName = escapeHtml(p?.brands?.name ?? "Sin marca");
-
-  return `
-    <div class="product-card group">
-      <div class="bg-neutral-dark aspect-[4/5] overflow-hidden mb-8 relative border border-white/5 shadow-2xl">
-        ${
-          img
-            ? `<img src="${img}" alt="${title}" class="w-full h-full object-cover transition-transform duration-700"
-                 loading="lazy"
-                 onerror="this.style.display='none'; this.parentElement.innerHTML='<div class=&quot;w-full h-full grid place-items-center text-slate-500 text-sm&quot;>Imagen no disponible</div>';" />`
-            : `<div class="w-full h-full grid place-items-center text-slate-500 text-sm">Sin imagen</div>`
-        }
-      </div>
-
-      <div class="space-y-4">
-        <div class="flex justify-between items-baseline gap-4">
-          <h3 class="text-xl font-medium tracking-tight group-hover:text-primary transition-colors line-clamp-2">${title}</h3>
-          ${priceText ? `<span class="text-lg font-light text-slate-400 whitespace-nowrap">${priceText}</span>` : ""}
-        </div>
-
-        <p class="text-slate-500 uppercase tracking-[0.2em] text-[10px]">${brandName}</p>
-
-        ${
-          isAdmin && url
-            ? `<a class="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.3em] font-bold text-primary pt-4 border-b border-transparent hover:border-primary transition-all"
-                 href="${url}" target="_blank" rel="noopener">
-                 Ver producto <span class="material-symbols-outlined text-xs">arrow_forward</span>
-               </a>`
-            : ""
-        }
-      </div>
-    </div>
-  `;
-}
-
 function applySort(q, sortValue) {
   switch (sortValue) {
     case "name_asc":
@@ -354,6 +106,51 @@ function applySort(q, sortValue) {
   }
 }
 
+function setView(isLoggedIn) {
+  if (loginScreen) loginScreen.classList.toggle("hidden", isLoggedIn);
+  if (appContent) appContent.classList.toggle("hidden", !isLoggedIn);
+}
+
+// --------------------------
+// Tarjeta producto
+// --------------------------
+function productCard(p) {
+  const title = escapeHtml(p?.[COL.title] ?? "Sin título");
+  const img = p?.[COL.image] ? escapeHtml(p[COL.image]) : "";
+  const url = p?.[COL.url] ? escapeHtml(p[COL.url]) : "";
+  const price = escapeHtml(p?.[COL.price] ?? "");
+
+  return `
+    <div class="group bg-white/5 border border-white/10 rounded-xl overflow-hidden hover:bg-white/10 hover:border-white/20 transition-all duration-300">
+      <div class="bg-neutral-dark aspect-[4/5] overflow-hidden relative border-b border-white/10">
+        ${
+          img
+            ? `<img src="${img}" alt="${title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy"
+                 onerror="this.style.display='none'; this.parentElement.innerHTML='<div class=&quot;w-full h-full grid place-items-center text-slate-500 text-sm&quot;>Imagen no disponible</div>';" />`
+            : `<div class="w-full h-full grid place-items-center text-slate-500 text-sm">Sin imagen</div>`
+        }
+      </div>
+
+      <div class="p-4">
+        <h3 class="text-base font-bold mb-2 line-clamp-2">${title}</h3>
+        ${price ? `<p class="text-slate-400 text-sm font-semibold">${price}</p>` : ""}
+
+        ${
+          isAdmin && url
+            ? `<a href="${url}" target="_blank" rel="noopener"
+                 class="inline-block mt-3 text-primary text-sm font-bold hover:underline">
+                 Ver producto →
+               </a>`
+            : ""
+        }
+      </div>
+    </div>
+  `;
+}
+
+// --------------------------
+// Fetch productos
+// --------------------------
 async function fetchProducts({ reset = false } = {}) {
   if (loading) return;
   loading = true;
@@ -362,69 +159,408 @@ async function fetchProducts({ reset = false } = {}) {
     page = 0;
     if (grid) grid.innerHTML = "";
     if (loadMoreBtn) loadMoreBtn.disabled = false;
-    if (loadMoreMobileBtn) loadMoreMobileBtn.disabled = false;
+    if (loadMoreMobile) loadMoreMobile.disabled = false;
   }
 
   setStatus("Cargando…");
   if (loadMoreBtn) loadMoreBtn.disabled = true;
-  if (loadMoreMobileBtn) loadMoreMobileBtn.disabled = true;
+  if (loadMoreMobile) loadMoreMobile.disabled = true;
 
-  const size = (page === 0) ? FIRST_LOAD : PAGE_SIZE;
-  const from = (page === 0) ? 0 : (FIRST_LOAD + (page - 1) * PAGE_SIZE);
+  const size = page === 0 ? FIRST_LOAD : PAGE_SIZE;
+  const from = page === 0 ? 0 : FIRST_LOAD + (page - 1) * PAGE_SIZE;
   const to = from + size - 1;
 
-  let q = sb
-    .from(TABLE_PRODUCTS)
-    .select(`*, brands:brand_id(name)`)
-    .range(from, to);
+  let q = sb.from(TABLE_NAME).select("*").range(from, to);
 
-  if (currentBrandId) q = q.eq("brand_id", currentBrandId);
-
+  // Filtro de búsqueda
   const term = (lastQuery || "").trim();
   if (term) q = q.ilike(COL.title, `%${term}%`);
 
+  // Filtro de marca
+  if (selectedBrand) {
+    q = q.eq(COL.brand, selectedBrand);
+  }
+
   q = applySort(q, lastSort);
 
-  const { data, error } = await q;
+  try {
+    const { data, error } = await q;
 
-  if (error) {
-    console.error("Supabase error:", error);
-    setStatus(`Error: ${error.message}`);
+    if (error) {
+      console.error("Supabase error:", error);
+      setStatus("Error cargando productos.");
+      if (loadMoreBtn) loadMoreBtn.disabled = false;
+      if (loadMoreMobile) loadMoreMobile.disabled = false;
+      loading = false;
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      setStatus(reset ? "No hay resultados." : "No hay más productos.");
+      if (loadMoreBtn) loadMoreBtn.disabled = true;
+      if (loadMoreMobile) loadMoreMobile.disabled = true;
+      loading = false;
+      return;
+    }
+
+    if (grid) grid.insertAdjacentHTML("beforeend", data.map(productCard).join(""));
+    page += 1;
+
+    setStatus("");
     if (loadMoreBtn) loadMoreBtn.disabled = false;
-    if (loadMoreMobileBtn) loadMoreMobileBtn.disabled = false;
+    if (loadMoreMobile) loadMoreMobile.disabled = false;
+  } catch (err) {
+    console.error("Error fetching products:", err);
+    setStatus("Error de conexión.");
+    if (loadMoreBtn) loadMoreBtn.disabled = false;
+    if (loadMoreMobile) loadMoreMobile.disabled = false;
+  } finally {
     loading = false;
-    return;
   }
-
-  if (!data || data.length === 0) {
-    setStatus(reset ? "No hay resultados." : "No hay más productos.");
-    if (loadMoreBtn) loadMoreBtn.disabled = true;
-    if (loadMoreMobileBtn) loadMoreMobileBtn.disabled = true;
-    loading = false;
-    return;
-  }
-
-  grid.insertAdjacentHTML("beforeend", data.map(productCard).join(""));
-  page += 1;
-
-  setStatus("");
-  if (loadMoreBtn) loadMoreBtn.disabled = false;
-  if (loadMoreMobileBtn) loadMoreMobileBtn.disabled = false;
-  loading = false;
 }
 
-// -------- Events --------
-let t = null;
-function onSearch(value) {
-  clearTimeout(t);
-  t = setTimeout(() => {
-    lastQuery = value;
+// --------------------------
+// Fetch Brands
+// --------------------------
+async function fetchBrands() {
+  try {
+    const { data, error } = await sb
+      .from(BRANDS_TABLE)
+      .select("*")
+      .order("name", { ascending: true });
+
+    if (error) {
+      console.error("Error cargando marcas:", error);
+      return;
+    }
+
+    allBrands = data || [];
+    renderBrandsDesktop();
+    renderBrandsMobile();
+    renderBrandsStrip();
+  } catch (err) {
+    console.error("Error fetching brands:", err);
+  }
+}
+
+function brandCard(brand, isMobile = false) {
+  const name = escapeHtml(brand.name || "");
+  const logo = brand.logo ? escapeHtml(brand.logo) : "";
+  
+  return `
+    <button 
+      class="brand-card group bg-white/5 border border-white/10 hover:bg-white/10 hover:border-primary/40 transition-all duration-300 p-4 text-left ${
+        selectedBrand === brand.name ? "border-primary bg-primary/10" : ""
+      }"
+      data-brand="${name}"
+      data-mobile="${isMobile}"
+      type="button"
+    >
+      ${
+        logo
+          ? `<img src="${logo}" alt="${name}" class="h-8 w-auto mb-2 opacity-80 group-hover:opacity-100 transition" />`
+          : `<div class="h-8 flex items-center mb-2"><span class="text-sm font-bold text-slate-400">${name}</span></div>`
+      }
+      <div class="text-xs text-slate-500 uppercase tracking-wider">${name}</div>
+    </button>
+  `;
+}
+
+function renderBrandsDesktop() {
+  if (!brandsGrid) return;
+  
+  if (allBrands.length === 0) {
+    brandsGrid.innerHTML = '<div class="text-slate-500 text-xs">No hay marcas disponibles</div>';
+    return;
+  }
+
+  brandsGrid.innerHTML = allBrands.map(b => brandCard(b, false)).join("");
+  attachBrandListeners();
+}
+
+function renderBrandsMobile() {
+  if (!mobileBrandsGrid) return;
+  
+  if (allBrands.length === 0) {
+    mobileBrandsGrid.innerHTML = '<div class="text-slate-500 text-xs">No hay marcas disponibles</div>';
+    return;
+  }
+
+  mobileBrandsGrid.innerHTML = allBrands.map(b => brandCard(b, true)).join("");
+  attachBrandListeners();
+}
+
+function renderBrandsStrip() {
+  if (!brandsStrip) return;
+  
+  if (allBrands.length === 0) {
+    brandsStrip.innerHTML = '<div class="text-slate-500 text-xs col-span-3">No hay marcas disponibles</div>';
+    return;
+  }
+
+  const visible = allBrands.slice(stripIndex, stripIndex + STRIP_SIZE);
+  brandsStrip.innerHTML = visible.map(b => brandCard(b, false)).join("");
+  attachBrandListeners();
+  
+  // Update navigation buttons
+  if (brandsStripPrev) brandsStripPrev.disabled = stripIndex === 0;
+  if (brandsStripNext) brandsStripNext.disabled = stripIndex + STRIP_SIZE >= allBrands.length;
+}
+
+function attachBrandListeners() {
+  document.querySelectorAll(".brand-card").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const brand = btn.dataset.brand;
+      selectBrand(brand);
+      
+      // Cerrar drawer mobile si está abierto
+      if (btn.dataset.mobile === "true" && mobileDrawer) {
+        mobileDrawer.classList.add("hidden");
+      }
+      
+      // Cerrar menú desktop si está abierto
+      if (btn.dataset.mobile === "false" && brandsMenu) {
+        brandsMenu.classList.add("hidden");
+      }
+    });
+  });
+}
+
+function selectBrand(brand) {
+  selectedBrand = brand;
+  fetchProducts({ reset: true });
+  
+  // Update UI
+  renderBrandsDesktop();
+  renderBrandsMobile();
+  renderBrandsStrip();
+  
+  if (mobileBrandStatus) {
+    mobileBrandStatus.textContent = `Filtrando: ${brand}`;
+  }
+}
+
+function clearBrandFilter() {
+  selectedBrand = null;
+  fetchProducts({ reset: true });
+  
+  renderBrandsDesktop();
+  renderBrandsMobile();
+  renderBrandsStrip();
+  
+  if (mobileBrandStatus) {
+    mobileBrandStatus.textContent = "";
+  }
+}
+
+// --------------------------
+// Brands UI Controls
+// --------------------------
+
+// Desktop dropdown
+if (brandsBtn && brandsMenu) {
+  brandsBtn.addEventListener("click", () => {
+    brandsMenu.classList.toggle("hidden");
+  });
+
+  // Close when clicking outside
+  document.addEventListener("click", (e) => {
+    if (!brandsBtn.contains(e.target) && !brandsMenu.contains(e.target)) {
+      brandsMenu.classList.add("hidden");
+    }
+  });
+}
+
+if (brandsAll) {
+  brandsAll.addEventListener("click", () => {
+    clearBrandFilter();
+    if (brandsMenu) brandsMenu.classList.add("hidden");
+  });
+}
+
+// Mobile drawer
+if (mobileMenuBtn && mobileDrawer) {
+  mobileMenuBtn.addEventListener("click", () => {
+    mobileDrawer.classList.remove("hidden");
+  });
+}
+
+if (mobileDrawerClose) {
+  mobileDrawerClose.addEventListener("click", () => {
+    if (mobileDrawer) mobileDrawer.classList.add("hidden");
+  });
+}
+
+if (mobileDrawerBackdrop) {
+  mobileDrawerBackdrop.addEventListener("click", () => {
+    if (mobileDrawer) mobileDrawer.classList.add("hidden");
+  });
+}
+
+if (mobileBrandsAll) {
+  mobileBrandsAll.addEventListener("click", () => {
+    clearBrandFilter();
+    if (mobileDrawer) mobileDrawer.classList.add("hidden");
+  });
+}
+
+// Strip navigation
+if (brandsStripPrev) {
+  brandsStripPrev.addEventListener("click", () => {
+    if (stripIndex > 0) {
+      stripIndex -= STRIP_SIZE;
+      renderBrandsStrip();
+    }
+  });
+}
+
+if (brandsStripNext) {
+  brandsStripNext.addEventListener("click", () => {
+    if (stripIndex + STRIP_SIZE < allBrands.length) {
+      stripIndex += STRIP_SIZE;
+      renderBrandsStrip();
+    }
+  });
+}
+
+// --------------------------
+// Role (profiles)
+// --------------------------
+async function loadRole(userId) {
+  isAdmin = false;
+
+  if (!userId) {
+    console.warn("⚠️ No se proporcionó userId");
+    return;
+  }
+
+  try {
+    const { data, error } = await sb
+      .from("profiles")
+      .select("role")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (error) {
+      console.error("❌ Error al consultar profiles:", error.message);
+      return;
+    }
+
+    if (!data) {
+      console.info("ℹ️ No se encontró perfil para este usuario. Rol por defecto: cliente");
+      return;
+    }
+
+    if (data.role === "admin") {
+      isAdmin = true;
+      console.log("✅ Usuario admin detectado");
+    } else {
+      console.log("ℹ️ Usuario rol:", data.role);
+    }
+  } catch (err) {
+    console.error("❌ Excepción en loadRole:", err);
+  }
+}
+
+// --------------------------
+// Sesión
+// --------------------------
+async function boot() {
+  try {
+    const { data, error } = await sb.auth.getSession();
+    
+    if (error) {
+      console.warn("getSession error:", error.message);
+      setView(false);
+      return;
+    }
+
+    const session = data?.session;
+
+    if (!session) {
+      setView(false);
+      return;
+    }
+
+    console.log("🔑 User ID:", session.user.id);
+    
+    setView(true);
+    await loadRole(session.user.id);
+    await fetchBrands();
     fetchProducts({ reset: true });
-  }, 250);
+  } catch (err) {
+    console.error("Error en boot:", err);
+    setView(false);
+  }
 }
 
-if (searchEl) searchEl.addEventListener("input", () => onSearch(searchEl.value));
-if (searchMobileEl) searchMobileEl.addEventListener("input", () => onSearch(searchMobileEl.value));
+// --------------------------
+// Login
+// --------------------------
+if (loginForm) {
+  loginForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    showLoginMsg("");
+
+    const email = (emailEl?.value || "").trim();
+    const password = (passEl?.value || "").trim();
+
+    if (!email || !password) {
+      showLoginMsg("Rellena email y contraseña.");
+      return;
+    }
+
+    if (loginBtn) loginBtn.disabled = true;
+
+    try {
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+
+      if (error) {
+        console.warn("login error:", error.message);
+        showLoginMsg("Credenciales incorrectas o usuario no existe.");
+        if (loginBtn) loginBtn.disabled = false;
+        return;
+      }
+    } catch (err) {
+      console.error("Error en login:", err);
+      showLoginMsg("Error de conexión.");
+      if (loginBtn) loginBtn.disabled = false;
+    }
+  });
+}
+
+// --------------------------
+// Logout
+// --------------------------
+if (logoutBtn) {
+  logoutBtn.addEventListener("click", async () => {
+    try {
+      await sb.auth.signOut();
+    } catch (err) {
+      console.error("Error en logout:", err);
+    }
+  });
+}
+
+// --------------------------
+// Search / Sort / Load more
+// --------------------------
+let searchTimeout = null;
+
+function setupSearch(element) {
+  if (!element) return;
+  
+  element.addEventListener("input", () => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+      lastQuery = element.value;
+      fetchProducts({ reset: true });
+    }, 300);
+  });
+}
+
+setupSearch(searchEl);
+setupSearch(searchMobile);
 
 if (sortEl) {
   sortEl.addEventListener("change", () => {
@@ -433,141 +569,40 @@ if (sortEl) {
   });
 }
 
-if (loadMoreBtn) loadMoreBtn.addEventListener("click", () => fetchProducts());
-if (loadMoreMobileBtn) loadMoreMobileBtn.addEventListener("click", () => fetchProducts());
-
-// Desktop brands dropdown
-if (brandsBtn) {
-  brandsBtn.addEventListener("click", (e) => {
-    e.preventDefault();
-    toggleBrandsMenu();
-  });
-}
-if (brandsAllBtn) {
-  brandsAllBtn.addEventListener("click", () => {
-    currentBrandId = null;
-    closeBrandsMenu();
-    fetchProducts({ reset: true });
-  });
-}
-document.addEventListener("click", (e) => {
-  if (!brandsMenu || !brandsBtn) return;
-  const inside = brandsMenu.contains(e.target) || brandsBtn.contains(e.target);
-  if (!inside) closeBrandsMenu();
-});
-
-// Mobile drawer
-if (mobileMenuBtn) mobileMenuBtn.addEventListener("click", openMobileDrawer);
-if (mobileDrawerBackdrop) mobileDrawerBackdrop.addEventListener("click", closeMobileDrawer);
-if (mobileDrawerClose) mobileDrawerClose.addEventListener("click", closeMobileDrawer);
-
-if (mobileBrandsAllBtn) {
-  mobileBrandsAllBtn.addEventListener("click", () => {
-    currentBrandId = null;
-    closeMobileDrawer();
-    fetchProducts({ reset: true });
-  });
+if (loadMoreBtn) {
+  loadMoreBtn.addEventListener("click", () => fetchProducts());
 }
 
-// Brands strip prev/next
-if (brandsStripPrev) {
-  brandsStripPrev.addEventListener("click", () => {
-    brandStripIndex = Math.max(0, brandStripIndex - 3);
-    renderBrandsStrip();
-  });
-}
-if (brandsStripNext) {
-  brandsStripNext.addEventListener("click", () => {
-    brandStripIndex = Math.min(allBrands.length - 1, brandStripIndex + 3);
-    // ajustar a múltiplo de 3
-    brandStripIndex = Math.floor(brandStripIndex / 3) * 3;
-    renderBrandsStrip();
-  });
+if (loadMoreMobile) {
+  loadMoreMobile.addEventListener("click", () => fetchProducts());
 }
 
-// ESC
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") {
-    closeBrandsMenu();
-    closeMobileDrawer();
-  }
-});
-
-// -------- Login / Logout --------
-if (loginForm) {
-  loginForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    hideLoginMsg();
-
-    const email = document.getElementById("email")?.value?.trim();
-    const password = document.getElementById("password")?.value;
-
-    if (!email || !password) {
-      showLoginMsg("Rellena email y contraseña.");
-      return;
-    }
-
-    loginBtn && (loginBtn.disabled = true);
-
-    const { data, error } = await sb.auth.signInWithPassword({ email, password });
-
-    loginBtn && (loginBtn.disabled = false);
-
-    if (error) {
-      showLoginMsg(error.message);
-      return;
-    }
-
-    // data.session ya disparará onAuthStateChange, pero por si acaso:
-    if (data?.session?.user) {
-      await loadRoleForUser(data.session.user);
-      showApp();
-      await loadBrands();
-      await fetchProducts({ reset: true });
-    }
-  });
-}
-
-if (logoutBtn) {
-  logoutBtn.addEventListener("click", async () => {
-    await sb.auth.signOut();
-    isAdmin = false;
-    currentBrandId = null;
-    lastQuery = "";
-    page = 0;
-    showLogin();
-  });
-}
-
-// -------- Boot --------
-async function boot() {
-  // Estado inicial
-  const { data } = await sb.auth.getSession();
-  const session = data?.session || null;
-
-  if (!session) {
-    showLogin();
-    return;
-  }
-
-  await loadRoleForUser(session.user);
-  showApp();
-  await loadBrands();
-  await fetchProducts({ reset: true });
-
-  // Si cambia auth en caliente
-  sb.auth.onAuthStateChange(async (_event, newSession) => {
-    if (!newSession) {
+// --------------------------
+// Auth State Change
+// --------------------------
+sb.auth.onAuthStateChange(async (_event, session) => {
+  try {
+    if (!session) {
       isAdmin = false;
-      currentBrandId = null;
-      showLogin();
+      selectedBrand = null;
+      allBrands = [];
+      if (grid) grid.innerHTML = "";
+      setStatus("");
+      showLoginMsg("");
+      setView(false);
       return;
     }
-    await loadRoleForUser(newSession.user);
-    showApp();
-    await loadBrands();
-    await fetchProducts({ reset: true });
-  });
-}
 
+    console.log("🔑 Auth state changed - User ID:", session.user.id);
+    
+    setView(true);
+    await loadRole(session.user.id);
+    await fetchBrands();
+    fetchProducts({ reset: true });
+  } catch (err) {
+    console.error("Error en auth state:", err);
+  }
+});
+
+// Iniciar
 boot();
