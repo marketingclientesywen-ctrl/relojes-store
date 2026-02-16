@@ -33,7 +33,14 @@ if (!window.supabase) {
   throw new Error("Supabase not found");
 }
 
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    storage: window.localStorage
+  }
+});
 
 // -------- UI --------
 const $ = (id) => document.getElementById(id);
