@@ -305,4 +305,30 @@ select{max-width:130px}
 }
 .card__link:hover{background: rgba(255,255,255,.08)}
 
-.foot
+.footer{
+  margin-top:32px;
+  padding:18px 0;
+  border-top:1px solid var(--line2);
+}
+.footer__inner{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  color:var(--muted);
+  font-size:13px;
+}
+.footer__brand{font-weight:900; color:var(--text)}
+
+@media(max-width:1024px){
+  .grid{grid-template-columns: repeat(3, minmax(0, 1fr))}
+}
+@media(max-width:768px){
+  .grid{grid-template-columns: repeat(2, minmax(0, 1fr))}
+  .hero__inner{grid-template-columns: 1fr; gap:18px}
+}
+@media(max-width:480px){
+  .grid{grid-template-columns: 1fr}
+  .hero__meta{grid-template-columns: 1fr}
+  .toolbox__row{flex-direction:column}
+  select{max-width:100%}
+}
