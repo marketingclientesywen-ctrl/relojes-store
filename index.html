@@ -1,1 +1,126 @@
 
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <title>Sapi Watches</title>
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            primary: "#137fec",
+            bg: "#0a0a0a",
+            "neutral-dark": "#0e1217"
+          },
+          fontFamily: {
+            sans: ["Space Grotesk"]
+          }
+        }
+      }
+    }
+  </script>
+</head>
+
+<body class="bg-bg text-white font-sans">
+
+<!-- ================= LOGIN ================= -->
+<section id="loginScreen" class="min-h-screen flex items-center justify-center px-6">
+  <div class="w-full max-w-md bg-white/5 border border-white/10 p-8 rounded-2xl">
+    <h1 class="text-3xl font-bold text-center mb-2">Sapi Watches</h1>
+    <p class="text-center text-slate-400 mb-6">Acceso privado</p>
+
+    <div id="loginMsg" class="hidden mb-4 text-sm text-red-300 bg-red-900/20 border border-red-500/30 p-3 rounded-lg"></div>
+
+    <form id="loginForm" class="space-y-4">
+      <input id="email" type="email" required placeholder="Email"
+        class="w-full h-12 px-4 bg-black/40 border border-white/10 rounded-lg text-white placeholder:text-slate-500 focus:border-primary/50 focus:outline-none"/>
+
+      <input id="password" type="password" required placeholder="Contraseña"
+        class="w-full h-12 px-4 bg-black/40 border border-white/10 rounded-lg text-white placeholder:text-slate-500 focus:border-primary/50 focus:outline-none"/>
+
+      <button id="loginBtn" type="submit" class="w-full h-12 bg-primary hover:bg-primary/90 font-bold uppercase text-sm rounded-lg transition-colors">
+        Entrar
+      </button>
+    </form>
+  </div>
+</section>
+
+<!-- ================= APP ================= -->
+<div id="appContent" class="hidden">
+
+  <!-- HEADER -->
+  <header class="sticky top-0 z-50 bg-bg/80 backdrop-blur-md border-b border-white/10">
+    <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+      <div class="font-bold text-xl">SW | Sapi Watches</div>
+      <button id="logoutBtn" class="text-sm uppercase text-slate-400 hover:text-white transition-colors">
+        Salir
+      </button>
+    </div>
+  </header>
+
+  <!-- HERO -->
+  <section class="pt-20 pb-12 text-center px-6">
+    <div class="max-w-4xl mx-auto">
+      <h1 class="text-4xl md:text-6xl font-bold mb-4">
+        El tiempo también es <span class="text-primary">diseño</span>
+      </h1>
+      <p class="text-slate-400 text-lg max-w-2xl mx-auto mb-8">
+        Catálogo curado de relojes premium
+      </p>
+    </div>
+  </section>
+
+  <!-- BÚSQUEDA Y FILTROS -->
+  <section class="max-w-7xl mx-auto px-6 mb-8">
+    <div class="bg-white/5 border border-white/10 rounded-xl p-4">
+      <div class="flex flex-col md:flex-row gap-4">
+        <input 
+          id="search" 
+          type="search" 
+          placeholder="Buscar relojes..."
+          class="flex-1 h-12 px-4 bg-black/40 border border-white/10 rounded-lg text-white placeholder:text-slate-500 focus:border-primary/50 focus:outline-none"
+        />
+        <select 
+          id="sort"
+          class="h-12 px-4 bg-black/40 border border-white/10 rounded-lg text-white focus:border-primary/50 focus:outline-none"
+        >
+          <option value="name_asc">Nombre A-Z</option>
+        </select>
+      </div>
+      <div id="status" class="mt-2 text-sm text-slate-400 min-h-[20px]"></div>
+    </div>
+  </section>
+
+  <!-- CATÁLOGO -->
+  <section class="max-w-7xl mx-auto px-6 pb-16">
+    <h2 class="text-3xl font-bold mb-8">Catálogo</h2>
+    <div id="grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
+    
+    <!-- Botón cargar más -->
+    <div class="mt-12 text-center">
+      <button 
+        id="loadMore"
+        class="px-8 py-3 bg-white/10 hover:bg-white/20 border border-white/10 rounded-lg font-bold uppercase text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        Cargar más
+      </button>
+    </div>
+  </section>
+
+</div>
+
+<!-- Supabase -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="script.js"></script>
+</body>
+</html>
