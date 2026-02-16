@@ -1,15 +1,13 @@
 // ==========================
-// SAPI WATCHES - SCRIPT ROBUSTO
-// Login Supabase + Roles + Catálogo
+// SAPI WATCHES - SCRIPT COMPLETO (OK con tu HTML actual)
+// Login + Role (profiles) + Catálogo
 // ==========================
 
-// -------- CONFIG (TU PROYECTO) --------
+// CONFIG
 const SUPABASE_URL = "https://gwprzkuuxhnixovmniaj.supabase.co";
 const SUPABASE_KEY = "sb_publishable_pd2KxCYegn_GRt5VCvjbnw_fBSIIu8r";
-
 const TABLE_NAME = "base_productos";
 
-// Columnas (tal cual las tienes en tu tabla)
 const COL = {
   title: "Titulo",
   image: "Imagen",
@@ -17,59 +15,41 @@ const COL = {
   url: "Titulo_URL",
 };
 
-// Paginación
-const FIRST_LOAD = 10;
-const PAGE_SIZE = 24;
-
-// Debug
-const DEBUG = true;
-
-// -------- BOOTSTRAP --------
-function log(...args) { if (DEBUG) console.log("[SW]", ...args); }
-function warn(...args) { console.warn("[SW]", ...args); }
-
-if (!window.supabase) {
-  alert("No se ha cargado Supabase. Revisa el script CDN en index.html.");
-  throw new Error("Supabase not found");
-}
-
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// -------- UI --------
-const $ = (id) => document.getElementById(id);
+// UI (IDs reales de TU HTML)
+const loginScreen = document.getElementById("loginScreen");
+const appContent = document.getElementById("appContent");
+const loginForm = document.getElementById("loginForm");
+const loginMsg = document.getElementById("loginMsg");
 
-const loginScreen = $("loginScreen");
-const appContent = $("appContent");
-const topbar = $("topbar");
+const emailEl = document.getElementById("email");
+const passEl = document.getElementById("password");
+const loginBtn = document.getElementById("loginBtn");
 
-const loginForm = $("loginForm");
-const loginMsg = $("loginMsg");
-const emailEl = $("email");
-const passEl = $("password");
-const loginBtn = $("loginBtn");
+const logoutBtn = document.getElementById("logoutBtn");
 
-const logoutBtn = $("logoutBtn");
+const grid = document.getElementById("grid");
+const statusEl = document.getElementById("status");
 
-const grid = $("grid");
-const statusEl = $("status");
-const searchEl = $("search");
-const sortEl = $("sort");
-const loadMoreBtn = $("loadMore");
-
-const sessionState = $("sessionState");
-const roleState = $("roleState");
-const countState = $("countState");
-const footerHint = $("footerHint");
+const searchEl = document.getElementById("search");
+const sortEl = document.getElementById("sort");
+const loadMoreBtn = document.getElementById("loadMore");
 
 // Estado
 let isAdmin = false;
+
 let page = 0;
+const FIRST_LOAD = 10;     // <= inicio: 10 relojes
+const PAGE_SIZE = 24;      // luego 24 por click
 let loading = false;
+
 let lastQuery = "";
 let lastSort = "name_asc";
-let lastCount = 0;
 
-// -------- HELPERS --------
+// --------------------------
+// Helpers
+// --------------------------
 function setStatus(msg = "") {
   if (statusEl) statusEl.textContent = msg;
 }
@@ -83,13 +63,6 @@ function showLoginMsg(msg = "") {
   }
   loginMsg.classList.remove("hidden");
   loginMsg.textContent = msg;
-}
-
-function setView(isLoggedIn) {
-  // Super literal: esto evita “cosas raras”
-  if (loginScreen) loginScreen.classList.toggle("hidden", isLoggedIn);
-  if (appContent) appContent.classList.toggle("hidden", !isLoggedIn);
-  if (topbar) topbar.classList.toggle("hidden", !isLoggedIn);
 }
 
 function escapeHtml(str) {
@@ -109,41 +82,15 @@ function applySort(q, sortValue) {
   }
 }
 
-function setMeta({ session, role, count } = {}) {
-  if (sessionState) sessionState.textContent = session ?? "—";
-  if (roleState) roleState.textContent = role ?? "—";
-  if (countState) countState.textContent = typeof count === "number" ? String(count) : "—";
-  if (footerHint) footerHint.textContent = session ? "Sesión activa" : "Sesión no activa";
+function setView(isLoggedIn) {
+  if (loginScreen) loginScreen.classList.toggle("hidden", isLoggedIn);
+  if (appContent) appContent.classList.toggle("hidden", !isLoggedIn);
 }
 
-// -------- ROLE (profiles) --------
-// Si no hay tabla profiles o no hay registro, no rompe: queda como "cliente".
-async function loadRole(userId) {
-  isAdmin = false;
-  setMeta({ role: "cliente" });
-
-  try {
-    const { data, error } = await sb
-      .from("profiles")
-      .select("role")
-      .eq("user_id", userId)
-      .maybeSingle();
-
-    if (error) {
-      warn("profiles role error:", error.message);
-      return;
-    }
-
-    if (data?.role === "admin") {
-      isAdmin = true;
-      setMeta({ role: "admin" });
-    }
-  } catch (e) {
-    warn("loadRole exception:", e);
-  }
-}
-
-// -------- CARD --------
+// --------------------------
+// Tarjeta producto
+// (Ver producto SOLO admin)
+// --------------------------
 function productCard(p) {
   const title = escapeHtml(p?.[COL.title] ?? "Sin título");
   const img = p?.[COL.image] ? escapeHtml(p[COL.image]) : "";
@@ -151,36 +98,40 @@ function productCard(p) {
   const price = escapeHtml(p?.[COL.price] ?? "");
 
   return `
-    <article class="card">
-      <div class="card__img">
+    <div class="product-card group">
+      <div class="bg-neutral-dark aspect-[4/5] overflow-hidden mb-6 relative border border-white/10">
         ${
           img
-            ? `<img src="${img}" alt="${title}" loading="lazy"
-                 onerror="this.remove(); this.parentElement.innerHTML='<div class=&quot;img__placeholder&quot;>Imagen no disponible</div>';" />`
-            : `<div class="img__placeholder">Sin imagen</div>`
+            ? `<img src="${img}" alt="${title}" class="w-full h-full object-cover" loading="lazy"
+                 onerror="this.style.display='none'; this.parentElement.innerHTML='<div class=&quot;w-full h-full grid place-items-center text-slate-500 text-sm&quot;>Imagen no disponible</div>';" />`
+            : `<div class="w-full h-full grid place-items-center text-slate-500 text-sm">Sin imagen</div>`
         }
       </div>
-      <div class="card__body">
-        <h3 class="card__title">${title}</h3>
-        ${price ? `<div class="card__price">${price}</div>` : `<div class="card__price">—</div>`}
-        ${
-          isAdmin && url
-            ? `<a class="card__link" href="${url}" target="_blank" rel="noopener">Ver producto →</a>`
-            : `<span class="card__link" style="opacity:.55; pointer-events:none;">Solo admin</span>`
-        }
-      </div>
-    </article>
+
+      <h3 class="text-lg font-semibold">${title}</h3>
+      ${price ? `<p class="text-slate-400 mt-1">${price}</p>` : ""}
+
+      ${
+        isAdmin && url
+          ? `<a href="${url}" target="_blank" rel="noopener"
+               class="inline-block mt-3 text-primary text-sm font-semibold">
+               Ver producto
+             </a>`
+          : ""
+      }
+    </div>
   `;
 }
 
-// -------- FETCH PRODUCTOS --------
+// --------------------------
+// Fetch productos
+// --------------------------
 async function fetchProducts({ reset = false } = {}) {
   if (loading) return;
   loading = true;
 
   if (reset) {
     page = 0;
-    lastCount = 0;
     if (grid) grid.innerHTML = "";
     if (loadMoreBtn) loadMoreBtn.disabled = false;
   }
@@ -192,77 +143,85 @@ async function fetchProducts({ reset = false } = {}) {
   const from = page === 0 ? 0 : FIRST_LOAD + (page - 1) * PAGE_SIZE;
   const to = from + size - 1;
 
-  try {
-    let q = sb.from(TABLE_NAME).select("*").range(from, to);
+  let q = sb.from(TABLE_NAME).select("*").range(from, to);
 
-    const term = (lastQuery || "").trim();
-    if (term) q = q.ilike(COL.title, `%${term}%`);
+  const term = (lastQuery || "").trim();
+  if (term) q = q.ilike(COL.title, `%${term}%`);
 
-    q = applySort(q, lastSort);
+  q = applySort(q, lastSort);
 
-    const { data, error } = await q;
+  const { data, error } = await q;
 
-    if (error) {
-      console.error("Supabase error:", error);
-      setStatus("Error cargando productos.");
-      if (loadMoreBtn) loadMoreBtn.disabled = false;
-      loading = false;
-      return;
-    }
-
-    if (!data || data.length === 0) {
-      setStatus(reset ? "No hay resultados." : "No hay más productos.");
-      if (loadMoreBtn) loadMoreBtn.disabled = true;
-      setMeta({ count: lastCount });
-      loading = false;
-      return;
-    }
-
-    lastCount += data.length;
-    setMeta({ count: lastCount });
-
-    if (grid) grid.insertAdjacentHTML("beforeend", data.map(productCard).join(""));
-    page += 1;
-
-    setStatus("");
+  if (error) {
+    console.error("Supabase error:", error);
+    setStatus("Error cargando productos.");
     if (loadMoreBtn) loadMoreBtn.disabled = false;
     loading = false;
-
-  } catch (e) {
-    console.error("fetchProducts exception:", e);
-    setStatus("Error inesperado cargando productos.");
-    if (loadMoreBtn) loadMoreBtn.disabled = false;
-    loading = false;
+    return;
   }
+
+  if (!data || data.length === 0) {
+    setStatus(reset ? "No hay resultados." : "No hay más productos.");
+    if (loadMoreBtn) loadMoreBtn.disabled = true;
+    loading = false;
+    return;
+  }
+
+  if (grid) grid.insertAdjacentHTML("beforeend", data.map(productCard).join(""));
+  page += 1;
+
+  setStatus("");
+  if (loadMoreBtn) loadMoreBtn.disabled = false;
+  loading = false;
 }
 
-// -------- BOOT --------
-async function boot() {
-  log("boot…");
+// --------------------------
+// Role (profiles)
+// --------------------------
+async function loadRole(userId) {
+  isAdmin = false;
 
+  // Si no hay tabla/registro, no rompemos nada: será “cliente”
+  const { data, error } = await sb
+    .from("profiles")
+    .select("role")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) {
+    console.warn("profiles role error:", error.message);
+    return;
+  }
+
+  if (data?.role === "admin") isAdmin = true;
+}
+
+// --------------------------
+// Sesión
+// --------------------------
+async function boot() {
   // 1) comprobar sesión
   const { data, error } = await sb.auth.getSession();
-  if (error) warn("getSession error:", error.message);
+  if (error) console.warn("getSession error:", error.message);
 
   const session = data?.session;
 
   if (!session) {
-    log("Sin sesión → mostrar login");
     setView(false);
-    setMeta({ session: "no", role: "—", count: 0 });
     return;
   }
 
-  log("Con sesión → entrar app");
+  // 2) logged in
   setView(true);
-  setMeta({ session: "sí" });
-
   await loadRole(session.user.id);
-  await fetchProducts({ reset: true });
+
+  // 3) cargar catálogo
+  fetchProducts({ reset: true });
 }
 
-// -------- EVENTS --------
+// --------------------------
 // Login
+// --------------------------
 if (loginForm) {
   loginForm.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -283,23 +242,27 @@ if (loginForm) {
     if (loginBtn) loginBtn.disabled = false;
 
     if (error) {
-      warn("login error:", error.message);
+      console.warn("login error:", error.message);
       showLoginMsg("Credenciales incorrectas o usuario no existe.");
       return;
     }
 
-    // NO hacemos setView aquí: lo hace onAuthStateChange (más fiable)
+    // No recargamos: dejamos que onAuthStateChange haga el switch
   });
 }
 
+// --------------------------
 // Logout
+// --------------------------
 if (logoutBtn) {
   logoutBtn.addEventListener("click", async () => {
     await sb.auth.signOut();
   });
 }
 
+// --------------------------
 // Search / Sort / Load more
+// --------------------------
 let t = null;
 function onSearch(v) {
   clearTimeout(t);
@@ -320,24 +283,22 @@ if (sortEl) {
 
 if (loadMoreBtn) loadMoreBtn.addEventListener("click", () => fetchProducts());
 
-// Sesión reactiva (esto evita “cosas raras”)
-sb.auth.onAuthStateChange(async (event, session) => {
-  log("onAuthStateChange:", event, !!session);
-
+// --------------------------
+// Reactivo a cambios de sesión
+// --------------------------
+sb.auth.onAuthStateChange(async (_event, session) => {
   if (!session) {
     isAdmin = false;
     if (grid) grid.innerHTML = "";
     setStatus("");
     showLoginMsg("");
     setView(false);
-    setMeta({ session: "no", role: "—", count: 0 });
     return;
   }
 
   setView(true);
-  setMeta({ session: "sí" });
   await loadRole(session.user.id);
-  await fetchProducts({ reset: true });
+  fetchProducts({ reset: true });
 });
 
 // START
